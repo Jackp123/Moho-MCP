@@ -143,7 +143,11 @@ function bone.getProperties(moho, params)
     local selOk, sel = pcall(function() return b.fSelected end)
     result.selected = selOk and sel or false
 
-    -- Constraints (if available)
+    -- Constraints and bone-control parents.
+    -- Per the M_Bone docs the actual fields are fAngleControlParent /
+    -- fPosControlParent / fScaleControlParent (int32 parent bone IDs, -1 if no
+    -- control). The earlier names fAngleControl / fPosControl / fScaleControl
+    -- don't exist — those reads always returned nil via pcall.
     local constraints = {}
 
     local minOk, minAngle = pcall(function() return b.fMinConstraint end)
@@ -161,19 +165,19 @@ function bone.getProperties(moho, params)
         constraints.enabled = conEnabled and true or false
     end
 
-    local posConOk, posCon = pcall(function() return b.fPosControl end)
-    if posConOk then
-        constraints.positionControl = posCon and true or false
+    local angleParentOk, angleParent = pcall(function() return b.fAngleControlParent end)
+    if angleParentOk and type(angleParent) == "number" then
+        constraints.angleControlParent = angleParent
     end
 
-    local angleConOk, angleCon = pcall(function() return b.fAngleControl end)
-    if angleConOk then
-        constraints.angleControl = angleCon and true or false
+    local posParentOk, posParent = pcall(function() return b.fPosControlParent end)
+    if posParentOk and type(posParent) == "number" then
+        constraints.posControlParent = posParent
     end
 
-    local scaleConOk, scaleCon = pcall(function() return b.fScaleControl end)
-    if scaleConOk then
-        constraints.scaleControl = scaleCon and true or false
+    local scaleParentOk, scaleParent = pcall(function() return b.fScaleControlParent end)
+    if scaleParentOk and type(scaleParent) == "number" then
+        constraints.scaleControlParent = scaleParent
     end
 
     result.constraints = constraints
