@@ -383,6 +383,170 @@
           "filePath": { "type": "string" }
         }
       }
+    },
+    "mesh.setPointCurvature": {
+      "description": "Set the curvature passing through a single mesh point",
+      "params": {
+        "type": "object",
+        "required": ["layerId", "pointIndex", "curvature"],
+        "properties": {
+          "layerId": { "type": "number" },
+          "pointIndex": { "type": "number" },
+          "curvature": { "type": "number" },
+          "frame": { "type": "number" }
+        }
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "curvature": { "type": "number" }
+        }
+      }
+    },
+    "mesh.getCurves": {
+      "description": "List all curves with their mesh-global point indices",
+      "params": {
+        "type": "object",
+        "required": ["layerId"],
+        "properties": { "layerId": { "type": "number" } }
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "curveCount": { "type": "number" },
+          "curves": { "type": "array" }
+        }
+      }
+    },
+    "mesh.setBezierHandle": {
+      "description": "Set one bezier control handle on a curve point",
+      "params": {
+        "type": "object",
+        "required": ["layerId", "curveIndex", "curvePointIndex", "x", "y"],
+        "properties": {
+          "layerId": { "type": "number" },
+          "curveIndex": { "type": "number" },
+          "curvePointIndex": { "type": "number" },
+          "x": { "type": "number" },
+          "y": { "type": "number" },
+          "frame": { "type": "number" },
+          "prePoint": { "type": "boolean" },
+          "syncAngles": { "type": "boolean" }
+        }
+      },
+      "result": { "type": "object", "properties": { "success": { "type": "boolean" } } }
+    },
+    "mesh.bindPoints": {
+      "description": "Bind mesh points to a bone (boneId: -1 unbind, -2 flexi, else bone index)",
+      "params": {
+        "type": "object",
+        "required": ["layerId", "pointIndices", "boneId"],
+        "properties": {
+          "layerId": { "type": "number" },
+          "pointIndices": { "type": "array", "items": { "type": "number" }, "minItems": 1 },
+          "boneId": { "type": "number" }
+        }
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "pointsBound": { "type": "array" }
+        }
+      }
+    },
+    "layer.setParentBone": {
+      "description": "Set the controlling parent bone for a layer (-1 to clear)",
+      "params": {
+        "type": "object",
+        "required": ["layerId", "boneId"],
+        "properties": {
+          "layerId": { "type": "number" },
+          "boneId": { "type": "number" }
+        }
+      },
+      "result": { "type": "object", "properties": { "success": { "type": "boolean" } } }
+    },
+    "layer.placeInGroup": {
+      "description": "Move a layer into a group",
+      "params": {
+        "type": "object",
+        "required": ["layerId", "parentGroupId"],
+        "properties": {
+          "layerId": { "type": "number" },
+          "parentGroupId": { "type": "number" },
+          "top": { "type": "boolean" }
+        }
+      },
+      "result": { "type": "object", "properties": { "success": { "type": "boolean" } } }
+    },
+    "layer.placeBehind": {
+      "description": "Reorder a layer behind another in its group",
+      "params": {
+        "type": "object",
+        "required": ["layerId", "behindLayerId"],
+        "properties": {
+          "layerId": { "type": "number" },
+          "behindLayerId": { "type": "number" }
+        }
+      },
+      "result": { "type": "object", "properties": { "success": { "type": "boolean" } } }
+    },
+    "layer.activateAction": {
+      "description": "Activate an action for editing (or empty string for mainline)",
+      "params": {
+        "type": "object",
+        "required": ["layerId"],
+        "properties": {
+          "layerId": { "type": "number" },
+          "actionName": { "type": "string" }
+        }
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "currentAction": { "type": "string" }
+        }
+      }
+    },
+    "layer.listActions": {
+      "description": "List actions on a layer, including which are smart-bone dials",
+      "params": {
+        "type": "object",
+        "required": ["layerId"],
+        "properties": { "layerId": { "type": "number" } }
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "actionCount": { "type": "number" },
+          "currentAction": { "type": "string" },
+          "actions": { "type": "array" }
+        }
+      }
+    },
+    "bone.createSmartAction": {
+      "description": "Create a smart-bone action named after the given bone",
+      "params": {
+        "type": "object",
+        "required": ["layerId", "boneId"],
+        "properties": {
+          "layerId": { "type": "number" },
+          "boneId": { "type": "number" },
+          "frame": { "type": "number" }
+        }
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "actionName": { "type": "string" },
+          "created": { "type": "boolean" },
+          "isSmartBone": { "type": "boolean" }
+        }
+      }
     }
   }
 }

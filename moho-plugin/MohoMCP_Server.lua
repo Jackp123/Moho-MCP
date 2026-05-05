@@ -108,10 +108,10 @@ local function loadModules(baseDir)
 	-- Load tool handlers
 	local toolModules = {
 		{ name = "moho_mcp.tools.document",  methods = { "document.getInfo", "document.getLayers", "document.setFrame", "document.screenshot", "document.save" } },
-		{ name = "moho_mcp.tools.layer",     methods = { "layer.getProperties", "layer.getChildren", "layer.getBones", "layer.setTransform", "layer.setVisibility", "layer.setOpacity", "layer.setName", "layer.selectLayer", "layer.createLayer", "layer.deleteLayer" } },
-		{ name = "moho_mcp.tools.bone",      methods = { "bone.getProperties", "bone.setTransform", "bone.selectBone", "bone.addBone", "bone.deleteBone", "bone.setRestPose" } },
+		{ name = "moho_mcp.tools.layer",     methods = { "layer.getProperties", "layer.getChildren", "layer.getBones", "layer.setTransform", "layer.setVisibility", "layer.setOpacity", "layer.setName", "layer.selectLayer", "layer.createLayer", "layer.deleteLayer", "layer.setParentBone", "layer.placeInGroup", "layer.placeBehind", "layer.activateAction", "layer.listActions" } },
+		{ name = "moho_mcp.tools.bone",      methods = { "bone.getProperties", "bone.setTransform", "bone.selectBone", "bone.addBone", "bone.deleteBone", "bone.setRestPose", "bone.createSmartAction" } },
 		{ name = "moho_mcp.tools.animation", methods = { "animation.getKeyframes", "animation.getFrameState", "animation.setKeyframe", "animation.deleteKeyframe", "animation.setInterpolation" } },
-		{ name = "moho_mcp.tools.mesh",      methods = { "mesh.getPoints", "mesh.getShapes", "mesh.addPoint", "mesh.createShape" } },
+		{ name = "moho_mcp.tools.mesh",      methods = { "mesh.getPoints", "mesh.getShapes", "mesh.addPoint", "mesh.createShape", "mesh.setPointCurvature", "mesh.getCurves", "mesh.setBezierHandle", "mesh.bindPoints" } },
 		{ name = "moho_mcp.tools.batch",     methods = { "batch.execute" } },
 	}
 

@@ -1107,4 +1107,250 @@ export function registerTools(server: McpServer, client: MohoClient): void {
       }
     },
   );
+
+  // =========================================================================
+  // Phase 5: Curves, binding, smart bones, reparenting
+  // =========================================================================
+
+  // 35. mesh.setPointCurvature — Smooth/sharpen a single mesh point
+  server.tool(
+    "mesh_setPointCurvature",
+    "Set the curvature passing through a single mesh point. The simplest way to make a vertex smooth (positive curvature, ~1.0) vs sharp/corner (0). Affects all curves through that point. Use this for soft, hand-drawn-looking shapes — without it, mesh_createShape produces flat polygons.",
+    {
+      layerId: z.number().describe("Absolute ID of the vector layer"),
+      pointIndex: z.number().describe("Mesh-global point index"),
+      curvature: z
+        .number()
+        .describe(
+          "Curvature value. 0 = sharp corner, ~1.0 = smooth, negative for inverted curves",
+        ),
+      frame: z.number().optional().describe("Frame to set the curvature at (default 0)"),
+    },
+    async (params) => {
+      try {
+        await ensureConnected(client);
+        const result = await client.sendRequest("mesh.setPointCurvature", params);
+        return successContent(result);
+      } catch (err) {
+        return errorContent(err);
+      }
+    },
+  );
+
+  // 36. mesh.getCurves — List curves with mesh-point indices for each
+  server.tool(
+    "mesh_getCurves",
+    "List all curves in a vector layer's mesh. Each curve entry includes its closed flag and an array of points pairing the curve-local index (curvePointIndex) with the mesh-global index (meshPointIndex). Call this before mesh_setBezierHandle, which needs curve-local indices.",
+    {
+      layerId: z.number().describe("Absolute ID of the vector layer"),
+    },
+    async ({ layerId }) => {
+      try {
+        await ensureConnected(client);
+        const result = await client.sendRequest("mesh.getCurves", { layerId });
+        return successContent(result);
+      } catch (err) {
+        return errorContent(err);
+      }
+    },
+  );
+
+  // 37. mesh.setBezierHandle — Direct control of a bezier handle
+  server.tool(
+    "mesh_setBezierHandle",
+    "Set one of the two bezier control handles on a curve point. ptID is curve-local — find it via mesh_getCurves. prePoint=false (default) targets the outgoing handle; true targets the incoming handle. syncAngles=true (default) keeps the opposite handle tangent.",
+    {
+      layerId: z.number().describe("Absolute ID of the vector layer"),
+      curveIndex: z.number().describe("Index of the curve in the mesh"),
+      curvePointIndex: z
+        .number()
+        .describe("Curve-local index of the point (NOT the mesh-global index)"),
+      x: z.number().describe("Handle X position"),
+      y: z.number().describe("Handle Y position"),
+      frame: z.number().optional().describe("Frame to set the handle at (default 0)"),
+      prePoint: z
+        .boolean()
+        .optional()
+        .describe("false = outgoing handle (default), true = incoming"),
+      syncAngles: z
+        .boolean()
+        .optional()
+        .describe("Keep the opposite handle tangent (default true)"),
+    },
+    async (params) => {
+      try {
+        await ensureConnected(client);
+        const result = await client.sendRequest("mesh.setBezierHandle", params);
+        return successContent(result);
+      } catch (err) {
+        return errorContent(err);
+      }
+    },
+  );
+
+  // 38. mesh.bindPoints — Bind mesh points to a bone
+  server.tool(
+    "mesh_bindPoints",
+    "Bind one or more mesh points to a bone so the bone deforms them when it moves. boneId values: -1 = unbind, -2 = flexi-bind to all bones in the parent bone layer, otherwise the index of a specific bone in the parent skeleton.",
+    {
+      layerId: z.number().describe("Absolute ID of the vector layer"),
+      pointIndices: z
+        .array(z.number())
+        .min(1)
+        .describe("Mesh-global indices of the points to bind"),
+      boneId: z
+        .number()
+        .describe(
+          "Bone to bind to. -1 = unbind, -2 = flexi-bind to all bones, else specific bone index",
+        ),
+    },
+    async (params) => {
+      try {
+        await ensureConnected(client);
+        const result = await client.sendRequest("mesh.bindPoints", params);
+        return successContent(result);
+      } catch (err) {
+        return errorContent(err);
+      }
+    },
+  );
+
+  // 39. layer.setParentBone — Set the controlling parent bone for a layer
+  server.tool(
+    "layer_setParentBone",
+    "Set the controlling parent bone for a layer (e.g. parent a body part to a hip bone). Pass boneId=-1 to clear.",
+    {
+      layerId: z.number().describe("Absolute ID of the layer"),
+      boneId: z
+        .number()
+        .describe("Bone index in the parent skeleton, or -1 to clear"),
+    },
+    async ({ layerId, boneId }) => {
+      try {
+        await ensureConnected(client);
+        const result = await client.sendRequest("layer.setParentBone", {
+          layerId,
+          boneId,
+        });
+        return successContent(result);
+      } catch (err) {
+        return errorContent(err);
+      }
+    },
+  );
+
+  // 40. layer.placeInGroup — Reparent a layer into a group
+  server.tool(
+    "layer_placeInGroup",
+    "Move a layer into the given group layer. Set top=true to place it at the top of the group's stack, false (default) for the bottom.",
+    {
+      layerId: z.number().describe("Layer to move"),
+      parentGroupId: z.number().describe("Absolute ID of the destination group layer"),
+      top: z
+        .boolean()
+        .optional()
+        .describe("Place at top of the group stack (default false = bottom)"),
+    },
+    async ({ layerId, parentGroupId, top }) => {
+      try {
+        await ensureConnected(client);
+        const result = await client.sendRequest("layer.placeInGroup", {
+          layerId,
+          parentGroupId,
+          top,
+        });
+        return successContent(result);
+      } catch (err) {
+        return errorContent(err);
+      }
+    },
+  );
+
+  // 41. layer.placeBehind — Reorder a layer behind another
+  server.tool(
+    "layer_placeBehind",
+    "Move a layer behind (below) another layer in the layer ordering. Both layers must be in the same group.",
+    {
+      layerId: z.number().describe("Layer to move"),
+      behindLayerId: z.number().describe("Layer to position behind"),
+    },
+    async ({ layerId, behindLayerId }) => {
+      try {
+        await ensureConnected(client);
+        const result = await client.sendRequest("layer.placeBehind", {
+          layerId,
+          behindLayerId,
+        });
+        return successContent(result);
+      } catch (err) {
+        return errorContent(err);
+      }
+    },
+  );
+
+  // 42. layer.activateAction — Switch into action-edit mode (or back to mainline)
+  server.tool(
+    "layer_activateAction",
+    'Activate an action on a layer for editing. While an action is active, any keyframes set via animation_setKeyframe / bone_setTransform are stored in that action — this is the mechanism for recording smart-bone dials. Pass actionName="" (or omit) to return to the mainline timeline.',
+    {
+      layerId: z.number().describe("Absolute ID of the layer"),
+      actionName: z
+        .string()
+        .optional()
+        .describe('Action name. Empty string (default) = mainline timeline'),
+    },
+    async ({ layerId, actionName }) => {
+      try {
+        await ensureConnected(client);
+        const result = await client.sendRequest("layer.activateAction", {
+          layerId,
+          actionName,
+        });
+        return successContent(result);
+      } catch (err) {
+        return errorContent(err);
+      }
+    },
+  );
+
+  // 43. layer.listActions — List all actions on a layer
+  server.tool(
+    "layer_listActions",
+    "List all actions on a layer, including which (if any) is currently being edited and which are smart-bone actions.",
+    {
+      layerId: z.number().describe("Absolute ID of the layer"),
+    },
+    async ({ layerId }) => {
+      try {
+        await ensureConnected(client);
+        const result = await client.sendRequest("layer.listActions", { layerId });
+        return successContent(result);
+      } catch (err) {
+        return errorContent(err);
+      }
+    },
+  );
+
+  // 44. bone.createSmartAction — Create a smart-bone action for a bone
+  server.tool(
+    "bone_createSmartAction",
+    "Create a smart-bone action on the given bone layer, named the same as the target bone. After creating it, call layer_activateAction with the same name and any subsequent bone keyframes get recorded into the dial — when the bone is later rotated, the dial replays proportionally.",
+    {
+      layerId: z.number().describe("Absolute ID of the bone layer"),
+      boneId: z.number().describe("Bone index in the skeleton"),
+      frame: z
+        .number()
+        .optional()
+        .describe("Frame to insert the action at (default 0)"),
+    },
+    async (params) => {
+      try {
+        await ensureConnected(client);
+        const result = await client.sendRequest("bone.createSmartAction", params);
+        return successContent(result);
+      } catch (err) {
+        return errorContent(err);
+      }
+    },
+  );
 }

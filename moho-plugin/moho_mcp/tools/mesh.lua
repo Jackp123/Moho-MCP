@@ -481,4 +481,210 @@ function mesh.createShape(moho, params)
     }
 end
 
+--- Set the curvature of a single mesh point.
+-- Per the M_Point docs, SetCurvature(curvature, frame) "sets the curvature of
+-- all curves that pass through this point" — the simplest way to make a vertex
+-- smooth (positive) vs sharp (zero/negative).
+-- @param params  layerId, pointIndex, curvature (real). Optional: frame (default 0).
+function mesh.setPointCurvature(moho, params)
+    if not params or params.layerId == nil then
+        return nil, "Missing required parameter: layerId"
+    end
+    if type(params.pointIndex) ~= "number" then
+        return nil, "Missing required parameter: pointIndex"
+    end
+    if type(params.curvature) ~= "number" then
+        return nil, "Missing required parameter: curvature"
+    end
+
+    local meshObj, vecLyr, err = getMesh(moho, params.layerId)
+    if not meshObj then
+        return nil, err
+    end
+
+    local count = meshObj:CountPoints()
+    if params.pointIndex < 0 or params.pointIndex >= count then
+        return nil, "pointIndex out of range"
+    end
+
+    local pOk, pt = pcall(function() return meshObj:Point(params.pointIndex) end)
+    if not pOk or not pt then
+        return nil, "Failed to access point"
+    end
+
+    local lyr = getLayerById(moho, params.layerId)
+    moho.document:PrepUndo(lyr)
+
+    local frame = params.frame or 0
+    local ok, setErr = pcall(function() pt:SetCurvature(params.curvature, frame) end)
+    if not ok then
+        return nil, "Failed to set curvature: " .. tostring(setErr)
+    end
+
+    moho.document:SetDirty()
+
+    return {
+        success    = true,
+        layerId    = params.layerId,
+        pointIndex = params.pointIndex,
+        curvature  = params.curvature,
+        frame      = frame,
+    }
+end
+
+--- List all curves in a vector layer's mesh, with the mesh-point indices that
+-- form each curve. Useful before calling mesh.setBezierHandle, which needs a
+-- curve-local point ID rather than a mesh-global one.
+-- @param params  layerId
+function mesh.getCurves(moho, params)
+    if not params or params.layerId == nil then
+        return nil, "Missing required parameter: layerId"
+    end
+
+    local meshObj, vecLyr, err = getMesh(moho, params.layerId)
+    if not meshObj then
+        return nil, err
+    end
+
+    local curves = {}
+    local count = 0
+    pcall(function() count = meshObj:CountCurves() end)
+
+    for i = 0, count - 1 do
+        local cOk, curve = pcall(function() return meshObj:Curve(i) end)
+        if cOk and curve then
+            local entry = { curveIndex = i, points = {} }
+            local closedOk, closed = pcall(function() return curve.fClosed end)
+            entry.closed = closedOk and closed or false
+
+            local ptCountOk, ptCount = pcall(function() return curve:CountPoints() end)
+            if ptCountOk and ptCount then
+                for j = 0, ptCount - 1 do
+                    local meshIdx = -1
+                    pcall(function()
+                        local p = curve:Point(j)
+                        meshIdx = meshObj:PointID(p)
+                    end)
+                    entry.points[#entry.points + 1] = {
+                        curvePointIndex = j,
+                        meshPointIndex  = meshIdx,
+                    }
+                end
+            end
+
+            curves[#curves + 1] = entry
+        end
+    end
+
+    return {
+        layerId    = params.layerId,
+        curveCount = count,
+        curves     = curves,
+    }
+end
+
+--- Set one of the two bezier control handles on a curve point.
+-- Per M_Curve docs: SetControlHandle(ptID, handle, frame, prePoint, syncAngles).
+-- The ptID is the curve-local point index — use mesh.getCurves to find it.
+-- @param params  layerId, curveIndex, curvePointIndex, x, y.
+--   Optional: frame (default 0), prePoint (default false = outgoing handle),
+--   syncAngles (default true).
+function mesh.setBezierHandle(moho, params)
+    if not params or params.layerId == nil then
+        return nil, "Missing required parameter: layerId"
+    end
+    if type(params.curveIndex) ~= "number"
+        or type(params.curvePointIndex) ~= "number"
+        or type(params.x) ~= "number"
+        or type(params.y) ~= "number" then
+        return nil, "Missing required params: curveIndex, curvePointIndex, x, y"
+    end
+
+    local meshObj, vecLyr, err = getMesh(moho, params.layerId)
+    if not meshObj then
+        return nil, err
+    end
+
+    local cOk, curve = pcall(function() return meshObj:Curve(params.curveIndex) end)
+    if not cOk or not curve then
+        return nil, "curveIndex out of range"
+    end
+
+    local lyr = getLayerById(moho, params.layerId)
+    moho.document:PrepUndo(lyr)
+
+    local frame = params.frame or 0
+    local prePoint = params.prePoint == true
+    local syncAngles = (params.syncAngles ~= false)
+
+    local ok, setErr = pcall(function()
+        local v = LM.Vector2:new_local()
+        v.x = params.x
+        v.y = params.y
+        curve:SetControlHandle(params.curvePointIndex, v, frame, prePoint, syncAngles)
+    end)
+    if not ok then
+        return nil, "Failed to set control handle: " .. tostring(setErr)
+    end
+
+    moho.document:SetDirty()
+
+    return {
+        success         = true,
+        layerId         = params.layerId,
+        curveIndex      = params.curveIndex,
+        curvePointIndex = params.curvePointIndex,
+        handle          = { x = params.x, y = params.y },
+        prePoint        = prePoint,
+        frame           = frame,
+    }
+end
+
+--- Bind one or more mesh points to a bone.
+-- M_Point.fParent: -1 = unbound, -2 = flexi-bound to all bones in parent layer,
+-- otherwise the int32 ID of the bone to attach to.
+-- @param params  layerId, pointIndices (array), boneId (number).
+function mesh.bindPoints(moho, params)
+    if not params or params.layerId == nil then
+        return nil, "Missing required parameter: layerId"
+    end
+    if type(params.pointIndices) ~= "table" or #params.pointIndices == 0 then
+        return nil, "pointIndices must be a non-empty array"
+    end
+    if type(params.boneId) ~= "number" then
+        return nil, "boneId must be a number (-1 unbind, -2 flexi-bind, or a bone ID)"
+    end
+
+    local meshObj, vecLyr, err = getMesh(moho, params.layerId)
+    if not meshObj then
+        return nil, err
+    end
+
+    local lyr = getLayerById(moho, params.layerId)
+    moho.document:PrepUndo(lyr)
+
+    local count = meshObj:CountPoints()
+    local bound = {}
+    for _, idx in ipairs(params.pointIndices) do
+        if type(idx) ~= "number" or idx < 0 or idx >= count then
+            return nil, "pointIndex out of range: " .. tostring(idx)
+        end
+        local pOk, pt = pcall(function() return meshObj:Point(idx) end)
+        if not pOk or not pt then
+            return nil, "Failed to access point " .. tostring(idx)
+        end
+        pcall(function() pt.fParent = params.boneId end)
+        bound[#bound + 1] = idx
+    end
+
+    moho.document:SetDirty()
+
+    return {
+        success     = true,
+        layerId     = params.layerId,
+        boneId      = params.boneId,
+        pointsBound = bound,
+    }
+end
+
 return mesh

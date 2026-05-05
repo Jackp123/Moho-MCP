@@ -664,4 +664,183 @@ function layer.selectLayer(moho, params)
     }
 end
 
+--- Set the controlling parent bone for a layer.
+-- Per the MohoLayer docs: SetLayerParentBone(id). Pass -1 to clear.
+function layer.setParentBone(moho, params)
+    if not params or params.layerId == nil then
+        return nil, "Missing required parameter: layerId"
+    end
+    if type(params.boneId) ~= "number" then
+        return nil, "boneId must be a number (-1 to clear)"
+    end
+
+    local lyr, err = getLayerById(moho, params.layerId)
+    if not lyr then
+        return nil, err
+    end
+
+    moho.document:PrepUndo(lyr)
+    local ok, setErr = pcall(function() lyr:SetLayerParentBone(params.boneId) end)
+    if not ok then
+        return nil, "Failed to set parent bone: " .. tostring(setErr)
+    end
+    moho.document:SetDirty()
+
+    return {
+        success = true,
+        layerId = params.layerId,
+        boneId  = params.boneId,
+    }
+end
+
+--- Move a layer into a group.
+-- Per the ScriptInterface docs: PlaceLayerInGroup(child, group, top, isUndoable).
+-- @param params  layerId, parentGroupId. Optional: top (default false).
+function layer.placeInGroup(moho, params)
+    if not params or params.layerId == nil or params.parentGroupId == nil then
+        return nil, "Missing required parameter: layerId and parentGroupId"
+    end
+
+    local child, err = getLayerById(moho, params.layerId)
+    if not child then
+        return nil, err
+    end
+
+    local parent, perr = getLayerById(moho, params.parentGroupId)
+    if not parent then
+        return nil, perr
+    end
+    if not parent:IsGroupType() then
+        return nil, "parentGroupId is not a group layer"
+    end
+
+    local gOk, parentGroup = pcall(function() return moho:LayerAsGroup(parent) end)
+    if not gOk or not parentGroup then
+        return nil, "Failed to cast parent layer to group"
+    end
+
+    moho.document:PrepUndo(child)
+    local ok, setErr = pcall(function()
+        moho:PlaceLayerInGroup(child, parentGroup, params.top == true, true)
+    end)
+    if not ok then
+        return nil, "Failed to place layer in group: " .. tostring(setErr)
+    end
+    moho.document:SetDirty()
+
+    return {
+        success       = true,
+        layerId       = params.layerId,
+        parentGroupId = params.parentGroupId,
+        top           = params.top == true,
+    }
+end
+
+--- Reorder a layer behind another.
+-- Per the ScriptInterface docs: PlaceLayerBehindAnother(moveLayer, behindThis).
+function layer.placeBehind(moho, params)
+    if not params or params.layerId == nil or params.behindLayerId == nil then
+        return nil, "Missing required parameter: layerId and behindLayerId"
+    end
+
+    local mover, err = getLayerById(moho, params.layerId)
+    if not mover then
+        return nil, err
+    end
+    local pivot, perr = getLayerById(moho, params.behindLayerId)
+    if not pivot then
+        return nil, perr
+    end
+
+    moho.document:PrepUndo(mover)
+    local ok, setErr = pcall(function()
+        moho:PlaceLayerBehindAnother(mover, pivot)
+    end)
+    if not ok then
+        return nil, "Failed to reorder layer: " .. tostring(setErr)
+    end
+    moho.document:SetDirty()
+
+    return {
+        success        = true,
+        layerId        = params.layerId,
+        behindLayerId  = params.behindLayerId,
+    }
+end
+
+--- Activate (or deactivate) an action on a layer for editing.
+-- Per the MohoLayer docs: ActivateAction(name). Pass an empty string to return
+-- to the mainline timeline. Any keyframes set while an action is active are
+-- stored in that action — this is how smart bone dials are recorded.
+function layer.activateAction(moho, params)
+    if not params or params.layerId == nil then
+        return nil, "Missing required parameter: layerId"
+    end
+    if params.actionName ~= nil and type(params.actionName) ~= "string" then
+        return nil, "actionName must be a string (or omit / pass \"\" for mainline)"
+    end
+
+    local lyr, err = getLayerById(moho, params.layerId)
+    if not lyr then
+        return nil, err
+    end
+
+    local actionName = params.actionName or ""
+    local ok, setErr = pcall(function() lyr:ActivateAction(actionName) end)
+    if not ok then
+        return nil, "Failed to activate action: " .. tostring(setErr)
+    end
+
+    local current = ""
+    pcall(function() current = lyr:CurrentAction() end)
+
+    return {
+        success       = true,
+        layerId       = params.layerId,
+        currentAction = current,
+    }
+end
+
+--- List all actions on a layer.
+function layer.listActions(moho, params)
+    if not params or params.layerId == nil then
+        return nil, "Missing required parameter: layerId"
+    end
+
+    local lyr, err = getLayerById(moho, params.layerId)
+    if not lyr then
+        return nil, err
+    end
+
+    local count = 0
+    pcall(function() count = lyr:CountActions() end)
+
+    local actions = {}
+    for i = 0, count - 1 do
+        local nameOk, name = pcall(function() return lyr:ActionName(i) end)
+        if nameOk and name then
+            local isSmart = false
+            pcall(function() isSmart = lyr:IsSmartBoneAction(name) end)
+            local duration = 0
+            pcall(function() duration = lyr:ActionDuration(name) end)
+            actions[#actions + 1] = {
+                index        = i,
+                name         = name,
+                isSmartBone  = isSmart,
+                duration     = duration,
+            }
+        end
+    end
+
+    local current = ""
+    pcall(function() current = lyr:CurrentAction() end)
+
+    return {
+        layerId       = params.layerId,
+        actionCount   = count,
+        currentAction = current,
+        actions       = actions,
+    }
+end
+
 return layer
