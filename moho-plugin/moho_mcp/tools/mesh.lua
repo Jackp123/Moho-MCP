@@ -274,7 +274,13 @@ function mesh.getShapes(moho, params)
 end
 
 --- Add a new point to a vector layer's mesh.
--- @param params table  Must contain layerId, x, y. Optional: weld (boolean).
+-- Per the M_Mesh API:
+--   AddLonePoint(pos, frame)            — start a new disconnected point
+--   AppendPoint(pos, frame)             — extend a curve from the last AddLonePoint/AppendPoint
+--   AddPoint(pos, attachID, frame)      — connect to an existing point by ID
+-- @param params table  Required: layerId, x, y.
+--   Optional: frame (default 0), connectToPointId (number — connect to that point),
+--   startNewCurve (boolean — force AddLonePoint even if mesh is non-empty).
 function mesh.addPoint(moho, params)
     if not params or params.layerId == nil then
         return nil, "Missing required parameter: layerId"
@@ -291,17 +297,39 @@ function mesh.addPoint(moho, params)
     local layer = getLayerById(moho, params.layerId)
     moho.document:PrepUndo(layer)
 
+    local frame = params.frame or 0
+    if type(frame) ~= "number" then
+        return nil, "frame must be a number"
+    end
+
     local before = 0
     pcall(function() before = meshObj:CountPoints() end)
+
+    local mode = "lone"
+    if params.connectToPointId ~= nil then
+        if type(params.connectToPointId) ~= "number" then
+            return nil, "connectToPointId must be a number"
+        end
+        if params.connectToPointId < 0 or params.connectToPointId >= before then
+            return nil, "connectToPointId out of range"
+        end
+        mode = "attach"
+    elseif params.startNewCurve == true or before == 0 then
+        mode = "lone"
+    else
+        mode = "append"
+    end
 
     local addOk, addErr = pcall(function()
         local vec = LM.Vector2:new_local()
         vec.x = params.x
         vec.y = params.y
-        if params.weld == true then
-            meshObj:AppendPoint(vec, true)
+        if mode == "attach" then
+            meshObj:AddPoint(vec, params.connectToPointId, frame)
+        elseif mode == "lone" then
+            meshObj:AddLonePoint(vec, frame)
         else
-            meshObj:AppendPoint(vec)
+            meshObj:AppendPoint(vec, frame)
         end
     end)
 
@@ -320,11 +348,19 @@ function mesh.addPoint(moho, params)
         pointIndex = after - 1,
         pointCount = after,
         position   = { x = params.x, y = params.y },
+        mode       = mode,
     }
 end
 
 --- Create a shape from a list of point indices.
--- @param params table  layerId, pointIndices (array). Optional: closed, name, fillColor, strokeColor, strokeWidth.
+-- The shape-creation method is exposed on the ScriptInterface (the `moho` object),
+-- not on M_Mesh directly, so we call moho:CreateShape with several known signatures.
+-- Style fields:
+--   fHasFill / fHasOutline   live on M_Shape (NOT on fMyStyle)
+--   fFillCol / fLineCol      are AnimColor channels — set via :SetValue(frame, color)
+--   fLineWidth               is a plain real on M_Style
+-- @param params table  layerId, pointIndices (array). Optional: closed (default true),
+--   name, fillColor (#RRGGBB[AA]), strokeColor, strokeWidth.
 function mesh.createShape(moho, params)
     if not params or params.layerId == nil then
         return nil, "Missing required parameter: layerId"
@@ -341,6 +377,9 @@ function mesh.createShape(moho, params)
     local layer = getLayerById(moho, params.layerId)
     moho.document:PrepUndo(layer)
 
+    -- Make sure the vector layer is active so shape creation lands here.
+    pcall(function() moho:SetSelLayer(layer) end)
+
     pcall(function() meshObj:SelectNone() end)
 
     local count = meshObj:CountPoints()
@@ -356,22 +395,38 @@ function mesh.createShape(moho, params)
     end
 
     local closed = (params.closed ~= false)
+    local frame = params.frame or 0
 
     local beforeShapes = 0
     pcall(function() beforeShapes = meshObj:CountShapes() end)
 
-    local createOk, createErr = pcall(function()
-        meshObj:CreateShape(closed)
-    end)
+    -- Try shape creation API variants in order of likelihood. The exact signature
+    -- isn't documented in the M_Mesh / MohoDoc pages we have access to.
+    local createOk = false
+    local lastErr = nil
+    local attempts = {
+        function() moho:CreateShape(closed, true) end,  -- (closed, hasOutline)
+        function() moho:CreateShape(closed) end,
+        function() moho.document:CreateShape(closed) end,
+        function() meshObj:CreateShape(closed) end,
+    }
+    for _, fn in ipairs(attempts) do
+        local ok, e = pcall(fn)
+        if ok then
+            createOk = true
+            break
+        end
+        lastErr = e
+    end
     if not createOk then
-        return nil, "Failed to create shape: " .. tostring(createErr)
+        return nil, "Failed to create shape (no known API variant worked): " .. tostring(lastErr)
     end
 
     local afterShapes = beforeShapes
     pcall(function() afterShapes = meshObj:CountShapes() end)
 
     if afterShapes <= beforeShapes then
-        return nil, "Shape creation did not produce a new shape"
+        return nil, "Shape creation call succeeded but no new shape was added (check that points form a valid loop)"
     end
 
     local newIndex = afterShapes - 1
@@ -382,35 +437,42 @@ function mesh.createShape(moho, params)
         if params.name ~= nil and type(params.name) == "string" then
             pcall(function() shape:SetName(params.name) end)
         end
-        local style = nil
-        pcall(function() style = shape.fMyStyle end)
-        if style then
-            local function applyHex(hex)
-                hex = hex:gsub("^#", "")
-                local r = tonumber(hex:sub(1, 2), 16) or 0
-                local g = tonumber(hex:sub(3, 4), 16) or 0
-                local b = tonumber(hex:sub(5, 6), 16) or 0
-                local a = 255
-                if #hex >= 8 then a = tonumber(hex:sub(7, 8), 16) or 255 end
-                local col = LM.ColorVector:new_local()
-                col:Set(r / 255, g / 255, b / 255, a / 255)
-                return col
-            end
-            if params.fillColor ~= nil and type(params.fillColor) == "string" then
-                pcall(function()
-                    style.fHasFill = true
-                    style.fFillCol = applyHex(params.fillColor)
-                end)
-            end
-            if params.strokeColor ~= nil and type(params.strokeColor) == "string" then
-                pcall(function()
-                    style.fHasLine = true
-                    style.fLineCol = applyHex(params.strokeColor)
-                end)
-            end
-            if params.strokeWidth ~= nil and type(params.strokeWidth) == "number" then
-                pcall(function() style.fLineWidth = params.strokeWidth end)
-            end
+
+        local function makeColor(hex)
+            hex = hex:gsub("^#", "")
+            local r = tonumber(hex:sub(1, 2), 16) or 0
+            local g = tonumber(hex:sub(3, 4), 16) or 0
+            local b = tonumber(hex:sub(5, 6), 16) or 0
+            local a = 255
+            if #hex >= 8 then a = tonumber(hex:sub(7, 8), 16) or 255 end
+            local col = LM.ColorVector:new_local()
+            col:Set(r / 255, g / 255, b / 255, a / 255)
+            return col
+        end
+
+        if params.fillColor ~= nil and type(params.fillColor) == "string" then
+            pcall(function()
+                shape.fHasFill = true
+                local style = shape.fMyStyle
+                if style and style.fFillCol then
+                    style.fFillCol:SetValue(frame, makeColor(params.fillColor))
+                end
+            end)
+        end
+        if params.strokeColor ~= nil and type(params.strokeColor) == "string" then
+            pcall(function()
+                shape.fHasOutline = true
+                local style = shape.fMyStyle
+                if style and style.fLineCol then
+                    style.fLineCol:SetValue(frame, makeColor(params.strokeColor))
+                end
+            end)
+        end
+        if params.strokeWidth ~= nil and type(params.strokeWidth) == "number" then
+            pcall(function()
+                local style = shape.fMyStyle
+                if style then style.fLineWidth = params.strokeWidth end
+            end)
         end
     end
 

@@ -275,18 +275,22 @@
       }
     },
     "bone.deleteBone": {
-      "description": "Delete a bone from a skeleton",
+      "description": "Delete a bone from a skeleton; recursive=true also deletes children",
       "params": {
         "type": "object",
         "required": ["layerId", "boneId"],
         "properties": {
           "layerId": { "type": "number" },
-          "boneId": { "type": "number" }
+          "boneId": { "type": "number" },
+          "recursive": { "type": "boolean" }
         }
       },
       "result": {
         "type": "object",
-        "properties": { "success": { "type": "boolean" } }
+        "properties": {
+          "success": { "type": "boolean" },
+          "recursive": { "type": "boolean" }
+        }
       }
     },
     "bone.setRestPose": {
@@ -315,7 +319,7 @@
       }
     },
     "mesh.addPoint": {
-      "description": "Add a new mesh point to a vector layer",
+      "description": "Add a new mesh point to a vector layer (lone, appended, or attached to an existing point)",
       "params": {
         "type": "object",
         "required": ["layerId", "x", "y"],
@@ -323,7 +327,9 @@
           "layerId": { "type": "number" },
           "x": { "type": "number" },
           "y": { "type": "number" },
-          "weld": { "type": "boolean" }
+          "frame": { "type": "number" },
+          "connectToPointId": { "type": "number" },
+          "startNewCurve": { "type": "boolean" }
         }
       },
       "result": {
@@ -332,7 +338,8 @@
           "success": { "type": "boolean" },
           "pointIndex": { "type": "number" },
           "pointCount": { "type": "number" },
-          "position": { "type": "object" }
+          "position": { "type": "object" },
+          "mode": { "type": "string", "enum": ["lone", "append", "attach"] }
         }
       }
     },

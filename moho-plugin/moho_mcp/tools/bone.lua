@@ -331,9 +331,11 @@ function bone.addBone(moho, params)
 
     moho.document:PrepUndo(lyr)
 
+    -- M_Skeleton:AddBone(frame) — frame 0 = rest pose
+    local frame = params.frame or 0
     local newBone = nil
     local addOk, addErr = pcall(function()
-        newBone = skel:AddBone()
+        newBone = skel:AddBone(frame)
     end)
     if not addOk or not newBone then
         return nil, "Failed to add bone: " .. tostring(addErr)
@@ -376,6 +378,7 @@ function bone.addBone(moho, params)
 end
 
 --- Delete a bone from a bone layer's skeleton.
+-- Per the M_Skeleton API: DeleteBone(id, recursion) — recursion=true also deletes child bones.
 function bone.deleteBone(moho, params)
     if not params or params.layerId == nil or params.boneId == nil then
         return nil, "Missing required parameter: layerId and boneId"
@@ -389,8 +392,10 @@ function bone.deleteBone(moho, params)
     local lyr = getLayerById(moho, params.layerId)
     moho.document:PrepUndo(lyr)
 
+    local recursive = (params.recursive == true)
+
     local ok, delErr = pcall(function()
-        skel:DeleteBone(params.boneId)
+        skel:DeleteBone(params.boneId, recursive)
     end)
     if not ok then
         return nil, "Failed to delete bone: " .. tostring(delErr)
@@ -399,9 +404,10 @@ function bone.deleteBone(moho, params)
     moho.document:SetDirty()
 
     return {
-        success = true,
-        layerId = params.layerId,
-        boneId  = params.boneId,
+        success   = true,
+        layerId   = params.layerId,
+        boneId    = params.boneId,
+        recursive = recursive,
     }
 end
 

@@ -308,6 +308,9 @@ function document.screenshot(moho, params)
 end
 
 --- Save the current document to disk.
+-- The Moho API docs don't list Save / SaveAs on MohoDoc, so saving lives on
+-- the ScriptInterface (the `moho` object). We try several known signatures
+-- so this works across MOHO versions.
 -- @param params table  Optional: filePath (string). When omitted, saves to existing path.
 function document.save(moho, params)
     if not moho or not moho.document then
@@ -322,20 +325,42 @@ function document.save(moho, params)
         return nil, "filePath must be a string"
     end
 
-    local saveOk, saveErr = pcall(function()
-        if targetPath and #targetPath > 0 then
-            doc:SaveAs(targetPath)
-        else
-            local existing = doc:Path()
-            if not existing or existing == "" then
-                error("Document has no path; pass filePath to save a new document")
-            end
-            doc:Save()
-        end
-    end)
+    -- "Save" with no path: only works if the document already has a path.
+    local existingPath = ""
+    pcall(function() existingPath = doc:Path() end)
+    if (not targetPath or #targetPath == 0) and (not existingPath or existingPath == "") then
+        return nil, "Document has no path on disk yet. Pass filePath to perform a Save As."
+    end
 
-    if not saveOk then
-        return nil, "Failed to save document: " .. tostring(saveErr)
+    local lastErr = nil
+    local saveAttempts
+    if targetPath and #targetPath > 0 then
+        saveAttempts = {
+            function() moho:SaveDocumentAs(targetPath) end,
+            function() moho:SaveAs(targetPath) end,
+            function() doc:SaveAs(targetPath) end,
+            function() moho.document:SaveAs(targetPath) end,
+        }
+    else
+        saveAttempts = {
+            function() moho:SaveDocument() end,
+            function() moho:Save() end,
+            function() doc:Save() end,
+        }
+    end
+
+    local saved = false
+    for _, fn in ipairs(saveAttempts) do
+        local ok, e = pcall(fn)
+        if ok then
+            saved = true
+            break
+        end
+        lastErr = e
+    end
+
+    if not saved then
+        return nil, "Failed to save document (no known API variant worked): " .. tostring(lastErr)
     end
 
     local actualPath = ""

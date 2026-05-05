@@ -954,17 +954,22 @@ export function registerTools(server: McpServer, client: MohoClient): void {
   // 30. bone.deleteBone — Delete a bone
   server.tool(
     "bone_deleteBone",
-    "Delete a bone from a bone layer's skeleton by index.",
+    "Delete a bone from a bone layer's skeleton by index. Set recursive=true to also delete child bones; otherwise children are re-parented.",
     {
       layerId: z.number().describe("Absolute ID of the bone layer"),
       boneId: z.number().describe("Bone index within the skeleton"),
+      recursive: z
+        .boolean()
+        .optional()
+        .describe("If true, also delete all descendant bones (default false)"),
     },
-    async ({ layerId, boneId }) => {
+    async ({ layerId, boneId, recursive }) => {
       try {
         await ensureConnected(client);
         const result = await client.sendRequest("bone.deleteBone", {
           layerId,
           boneId,
+          recursive,
         });
         return successContent(result);
       } catch (err) {
@@ -1005,24 +1010,38 @@ export function registerTools(server: McpServer, client: MohoClient): void {
   // 32. mesh.addPoint — Add a new point to a vector layer's mesh
   server.tool(
     "mesh_addPoint",
-    "Add a new mesh point (vertex) at (x, y) to a vector layer. Returns the new point index. Set weld=true to merge with an existing point at the same location.",
+    "Add a new mesh point (vertex) at (x, y) to a vector layer. Behavior:\n" +
+      "- If connectToPointId is given: attach to that existing point (creates a curve segment).\n" +
+      "- Else if mesh is empty or startNewCurve=true: create a lone point (start of a new curve).\n" +
+      "- Else: append to the curve started by the most recent lone/append point.\n" +
+      "Typical pattern for a quad: 1st call with no options (becomes lone), 2nd/3rd/4th calls append, then mesh_createShape with all four indices.",
     {
       layerId: z.number().describe("Absolute ID of the vector layer"),
       x: z.number().describe("X coordinate of the new point"),
       y: z.number().describe("Y coordinate of the new point"),
-      weld: z
+      frame: z
+        .number()
+        .optional()
+        .describe("Frame to add the point at (default 0 = setup pose)"),
+      connectToPointId: z
+        .number()
+        .optional()
+        .describe("If supplied, attach the new point to this existing point index"),
+      startNewCurve: z
         .boolean()
         .optional()
-        .describe("If true, weld to an existing point at the same location"),
+        .describe("Force the new point to start a new disconnected curve"),
     },
-    async ({ layerId, x, y, weld }) => {
+    async ({ layerId, x, y, frame, connectToPointId, startNewCurve }) => {
       try {
         await ensureConnected(client);
         const result = await client.sendRequest("mesh.addPoint", {
           layerId,
           x,
           y,
-          weld,
+          frame,
+          connectToPointId,
+          startNewCurve,
         });
         return successContent(result);
       } catch (err) {

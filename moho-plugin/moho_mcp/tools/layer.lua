@@ -589,6 +589,9 @@ function layer.createLayer(moho, params)
 end
 
 --- Delete a layer from the document.
+-- The Moho API docs do not list a public DeleteLayer on MohoDoc, so the
+-- delete entry point lives on the ScriptInterface (the `moho` object). Try
+-- several known signatures so this works across MOHO versions.
 -- @param params table  Must contain layerId (number)
 function layer.deleteLayer(moho, params)
     if not params or params.layerId == nil then
@@ -602,17 +605,29 @@ function layer.deleteLayer(moho, params)
 
     moho.document:PrepUndo(lyr)
 
-    local ok, delErr = pcall(function()
-        moho.document:DeleteLayer(lyr)
-    end)
+    -- Select the layer first — most delete entry points operate on the active selection.
+    pcall(function() moho:SetSelLayer(lyr) end)
 
-    if not ok then
-        local altOk = pcall(function()
-            moho.document:DeleteLayerByIndex(params.layerId)
-        end)
-        if not altOk then
-            return nil, "Failed to delete layer: " .. tostring(delErr)
+    local lastErr = nil
+    local attempts = {
+        function() moho:DeleteLayer(lyr) end,
+        function() moho:DeleteCurrentLayer() end,
+        function() moho:DeleteSelectedLayer() end,
+        function() moho.document:DeleteLayer(lyr) end,
+        function() moho.document:DeleteCurrentLayer() end,
+    }
+    local deleted = false
+    for _, fn in ipairs(attempts) do
+        local ok, e = pcall(fn)
+        if ok then
+            deleted = true
+            break
         end
+        lastErr = e
+    end
+
+    if not deleted then
+        return nil, "Failed to delete layer (no known API variant worked): " .. tostring(lastErr)
     end
 
     moho.document:SetDirty()
