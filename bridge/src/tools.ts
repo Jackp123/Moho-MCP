@@ -865,7 +865,7 @@ export function registerTools(server: McpServer, client: MohoClient): void {
   // 27. layer.createLayer — Create a new layer in the document
   server.tool(
     "layer_createLayer",
-    'Create a new layer in the MOHO document. Type is one of "vector", "group", "bone", "image", "switch", "particle", "note", "patch", "audio". When parentId points to a group layer, the new layer is added inside that group. Returns the new layer\'s absolute id so subsequent calls can target it.',
+    'Create a new layer in the MOHO document. Type is one of "vector", "group", "bone", "image", "switch", "particle", "note", "patch", "audio". If parentId is supplied, the bridge first selects that group so MOHO places the new layer inside it (selection-driven placement, per the official API). Returns the new layer\'s absolute id so subsequent calls can target it.',
     {
       type: z
         .enum([

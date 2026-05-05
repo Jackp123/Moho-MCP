@@ -519,6 +519,9 @@ end
 
 --- Create a new layer in the document.
 -- @param params table  Must contain type (string). Optionally name (string) and parentId (number).
+--   parentId is best-effort: if the user has the parent group selected before the
+--   call, the new layer is automatically added inside it; otherwise it is created
+--   at the document root. (MOHO's create API is moho:CreateNewLayer(type, isWrapper).)
 -- @return table|nil  { success, layerId, name, type } on success
 -- @return string|nil  Error message on failure
 function layer.createLayer(moho, params)
@@ -534,7 +537,8 @@ function layer.createLayer(moho, params)
         return nil, typeErr
     end
 
-    local addToGroup = nil
+    -- If parentId is supplied, select that group first so MOHO creates the new
+    -- layer inside it (selection-driven placement is the documented MOHO behavior).
     if params.parentId ~= nil then
         if type(params.parentId) ~= "number" then
             return nil, "parentId must be a number"
@@ -546,22 +550,17 @@ function layer.createLayer(moho, params)
         if not parentLyr:IsGroupType() then
             return nil, "parentId " .. tostring(params.parentId) .. " is not a group layer"
         end
-        local gOk, group = pcall(function() return moho:LayerAsGroup(parentLyr) end)
-        if not gOk or not group then
-            return nil, "Failed to cast parent layer to group"
-        end
-        addToGroup = group
+        pcall(function() moho:SetSelLayer(parentLyr) end)
     end
 
     moho.document:PrepUndo(nil)
 
+    -- Per docs: moho:CreateNewLayer(MOHO.LT_GROUP, false). The method lives on
+    -- the ScriptInterface (moho), not the document, and the 2nd arg is a
+    -- boolean (wrapper-group flag), not a parent layer.
     local newLayer = nil
     local createOk, createErr = pcall(function()
-        if addToGroup ~= nil then
-            newLayer = moho.document:CreateNewLayer(typeConst, addToGroup)
-        else
-            newLayer = moho.document:CreateNewLayer(typeConst)
-        end
+        newLayer = moho:CreateNewLayer(typeConst, false)
     end)
 
     if not createOk or not newLayer then
