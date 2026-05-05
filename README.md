@@ -310,3 +310,7 @@ All 26 tools work identically on both platforms. The bridge auto-detects the OS 
 ## License
 
 MIT — see [LICENSE](LICENSE) for details.
+
+## References
+
+- **Official Moho Lua API docs** — https://www.mohoscripting.com — authoritative reference for `MohoDoc`, `M_Skeleton`, `M_Mesh`, `M_Bone`, and related classes used by the Lua plugin.
