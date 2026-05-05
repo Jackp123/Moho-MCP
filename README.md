@@ -245,7 +245,7 @@ MohoMCP/
 │       ├── config.ts          # IPC directory, timeouts
 │       ├── moho-client.ts     # File-based IPC client
 │       ├── protocol.ts        # JSON-RPC 2.0 types
-│       ├── tools.ts           # 26 MCP tool registrations
+│       ├── tools.ts           # 44 MCP tool registrations
 │       ├── resources.ts       # Static knowledge resources
 │       ├── keep-alive.ts      # Cross-platform viewport refresh
 │       ├── platform-capture.ts # Platform dispatch → window capture
@@ -296,7 +296,7 @@ Wrap multiple create calls in `batch_execute` so a whole rig can be built in one
 
 ## Platform Support
 
-All 26 tools work identically on both platforms. The bridge auto-detects the OS at runtime and loads the appropriate native backend — no configuration needed.
+All 44 tools work identically on both platforms. The bridge auto-detects the OS at runtime and loads the appropriate native backend — no configuration needed.
 
 | Feature | Windows | macOS |
 |---------|---------|-------|
