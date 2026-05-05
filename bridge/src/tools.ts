@@ -1053,17 +1053,21 @@ export function registerTools(server: McpServer, client: MohoClient): void {
   // 33. mesh.createShape — Create a new shape from a list of point indices
   server.tool(
     "mesh_createShape",
-    'Create a new shape (filled region) on a vector layer from a list of point indices. Selects the points then calls Mesh:CreateShape. Optional fillColor / strokeColor are hex strings like "#FF8800". closed=true (default) creates a closed shape.',
+    'Create a new shape on a vector layer from a list of point indices. Selects the points then calls moho:CreateShape (the documented MOHO API). Closure is determined by the points\' geometry — use a closed loop of indices for a closed shape. Set filled=false for stroke-only. Colors are hex like "#FF8800".',
     {
       layerId: z.number().describe("Absolute ID of the vector layer"),
       pointIndices: z
         .array(z.number())
         .min(2)
         .describe("Indices of mesh points to use as the shape's outline"),
-      closed: z
+      filled: z
         .boolean()
         .optional()
-        .describe("Whether the shape is closed (default true)"),
+        .describe("Whether the shape is filled (default true)"),
+      frame: z
+        .number()
+        .optional()
+        .describe("Frame to create the shape at (default 0)"),
       name: z.string().optional().describe("Optional shape name"),
       fillColor: z
         .string()

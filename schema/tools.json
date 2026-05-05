@@ -344,14 +344,15 @@
       }
     },
     "mesh.createShape": {
-      "description": "Create a new shape from a list of mesh point indices",
+      "description": "Create a new shape from a list of mesh point indices via moho:CreateShape",
       "params": {
         "type": "object",
         "required": ["layerId", "pointIndices"],
         "properties": {
           "layerId": { "type": "number" },
           "pointIndices": { "type": "array", "items": { "type": "number" }, "minItems": 2 },
-          "closed": { "type": "boolean" },
+          "filled": { "type": "boolean", "description": "Whether the shape is filled (default true)" },
+          "frame": { "type": "number" },
           "name": { "type": "string" },
           "fillColor": { "type": "string" },
           "strokeColor": { "type": "string" },

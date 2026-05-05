@@ -518,10 +518,11 @@ local function resolveLayerTypeConstant(typeName)
 end
 
 --- Create a new layer in the document.
--- @param params table  Must contain type (string). Optionally name (string) and parentId (number).
---   parentId is best-effort: if the user has the parent group selected before the
---   call, the new layer is automatically added inside it; otherwise it is created
---   at the document root. (MOHO's create API is moho:CreateNewLayer(type, isWrapper).)
+-- Per the ScriptInterface docs:
+--   moho:CreateNewLayer(layerType, undoable)            — creates the new layer
+--   moho:PlaceLayerInGroup(child, group, top, isUndoable) — moves it into a group
+-- @param params table  Required: type (string).
+--   Optional: name (string), parentId (number — absolute ID of a group layer to nest into).
 -- @return table|nil  { success, layerId, name, type } on success
 -- @return string|nil  Error message on failure
 function layer.createLayer(moho, params)
@@ -537,8 +538,8 @@ function layer.createLayer(moho, params)
         return nil, typeErr
     end
 
-    -- If parentId is supplied, select that group first so MOHO creates the new
-    -- layer inside it (selection-driven placement is the documented MOHO behavior).
+    -- Resolve parent group up front so we can fail fast on a bad parentId.
+    local parentGroup = nil
     if params.parentId ~= nil then
         if type(params.parentId) ~= "number" then
             return nil, "parentId must be a number"
@@ -550,21 +551,30 @@ function layer.createLayer(moho, params)
         if not parentLyr:IsGroupType() then
             return nil, "parentId " .. tostring(params.parentId) .. " is not a group layer"
         end
-        pcall(function() moho:SetSelLayer(parentLyr) end)
+        local gOk, group = pcall(function() return moho:LayerAsGroup(parentLyr) end)
+        if not gOk or not group then
+            return nil, "Failed to cast parent layer to group"
+        end
+        parentGroup = group
     end
 
-    moho.document:PrepUndo(nil)
-
-    -- Per docs: moho:CreateNewLayer(MOHO.LT_GROUP, false). The method lives on
-    -- the ScriptInterface (moho), not the document, and the 2nd arg is a
-    -- boolean (wrapper-group flag), not a parent layer.
+    -- Per docs: moho:CreateNewLayer(layerType, undoable). Pass undoable=true so
+    -- the user can Ctrl-Z this in MOHO.
     local newLayer = nil
     local createOk, createErr = pcall(function()
-        newLayer = moho:CreateNewLayer(typeConst, false)
+        newLayer = moho:CreateNewLayer(typeConst, true)
     end)
 
     if not createOk or not newLayer then
         return nil, "Failed to create layer: " .. tostring(createErr)
+    end
+
+    -- Move into the parent group if one was specified.
+    if parentGroup ~= nil then
+        pcall(function()
+            -- moho:PlaceLayerInGroup(child, group, top, isUndoable)
+            moho:PlaceLayerInGroup(newLayer, parentGroup, true, true)
+        end)
     end
 
     if params.name ~= nil then
@@ -589,9 +599,7 @@ function layer.createLayer(moho, params)
 end
 
 --- Delete a layer from the document.
--- The Moho API docs do not list a public DeleteLayer on MohoDoc, so the
--- delete entry point lives on the ScriptInterface (the `moho` object). Try
--- several known signatures so this works across MOHO versions.
+-- Per the ScriptInterface docs: moho:DeleteLayer(layer).
 -- @param params table  Must contain layerId (number)
 function layer.deleteLayer(moho, params)
     if not params or params.layerId == nil then
@@ -605,29 +613,12 @@ function layer.deleteLayer(moho, params)
 
     moho.document:PrepUndo(lyr)
 
-    -- Select the layer first — most delete entry points operate on the active selection.
-    pcall(function() moho:SetSelLayer(lyr) end)
+    local ok, delErr = pcall(function()
+        moho:DeleteLayer(lyr)
+    end)
 
-    local lastErr = nil
-    local attempts = {
-        function() moho:DeleteLayer(lyr) end,
-        function() moho:DeleteCurrentLayer() end,
-        function() moho:DeleteSelectedLayer() end,
-        function() moho.document:DeleteLayer(lyr) end,
-        function() moho.document:DeleteCurrentLayer() end,
-    }
-    local deleted = false
-    for _, fn in ipairs(attempts) do
-        local ok, e = pcall(fn)
-        if ok then
-            deleted = true
-            break
-        end
-        lastErr = e
-    end
-
-    if not deleted then
-        return nil, "Failed to delete layer (no known API variant worked): " .. tostring(lastErr)
+    if not ok then
+        return nil, "Failed to delete layer: " .. tostring(delErr)
     end
 
     moho.document:SetDirty()

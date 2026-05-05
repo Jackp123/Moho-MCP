@@ -353,14 +353,19 @@ function mesh.addPoint(moho, params)
 end
 
 --- Create a shape from a list of point indices.
--- The shape-creation method is exposed on the ScriptInterface (the `moho` object),
--- not on M_Mesh directly, so we call moho:CreateShape with several known signatures.
+-- Per the ScriptInterface docs:
+--   moho:CreateShape(filled, behindNeighborStrokes, frame,
+--                    checkForBadShapes, skipDuplicateStrokes, skipFill, skipLine)
+-- The "closed" concept isn't a parameter — closure is determined by the
+-- selected points' geometry. `filled` controls whether the shape gets a fill;
+-- `skipFill` / `skipLine` let callers create stroke-only or fill-only shapes.
 -- Style fields:
 --   fHasFill / fHasOutline   live on M_Shape (NOT on fMyStyle)
 --   fFillCol / fLineCol      are AnimColor channels — set via :SetValue(frame, color)
 --   fLineWidth               is a plain real on M_Style
--- @param params table  layerId, pointIndices (array). Optional: closed (default true),
---   name, fillColor (#RRGGBB[AA]), strokeColor, strokeWidth.
+-- @param params table  Required: layerId, pointIndices (array of >=2 indices).
+--   Optional: frame, name, fillColor (#RRGGBB[AA]), strokeColor, strokeWidth,
+--   filled (default true; pass false for stroke-only).
 function mesh.createShape(moho, params)
     if not params or params.layerId == nil then
         return nil, "Missing required parameter: layerId"
@@ -377,7 +382,7 @@ function mesh.createShape(moho, params)
     local layer = getLayerById(moho, params.layerId)
     moho.document:PrepUndo(layer)
 
-    -- Make sure the vector layer is active so shape creation lands here.
+    -- The vector layer must be active so CreateShape operates on its mesh.
     pcall(function() moho:SetSelLayer(layer) end)
 
     pcall(function() meshObj:SelectNone() end)
@@ -394,32 +399,22 @@ function mesh.createShape(moho, params)
         pcall(function() pt.fSelected = true end)
     end
 
-    local closed = (params.closed ~= false)
     local frame = params.frame or 0
+    local filled = (params.filled ~= false)
+    local hasStroke = (params.strokeColor ~= nil or params.strokeWidth ~= nil)
+    local skipFill = (params.fillColor == nil and not filled)
+    local skipLine = not hasStroke and params.strokeColor == nil
 
     local beforeShapes = 0
     pcall(function() beforeShapes = meshObj:CountShapes() end)
 
-    -- Try shape creation API variants in order of likelihood. The exact signature
-    -- isn't documented in the M_Mesh / MohoDoc pages we have access to.
-    local createOk = false
-    local lastErr = nil
-    local attempts = {
-        function() moho:CreateShape(closed, true) end,  -- (closed, hasOutline)
-        function() moho:CreateShape(closed) end,
-        function() moho.document:CreateShape(closed) end,
-        function() meshObj:CreateShape(closed) end,
-    }
-    for _, fn in ipairs(attempts) do
-        local ok, e = pcall(fn)
-        if ok then
-            createOk = true
-            break
-        end
-        lastErr = e
-    end
+    -- moho:CreateShape(filled, behindNeighborStrokes, frame, checkForBadShapes,
+    --                  skipDuplicateStrokes, skipFill, skipLine)
+    local createOk, createErr = pcall(function()
+        moho:CreateShape(filled, false, frame, true, false, skipFill, skipLine)
+    end)
     if not createOk then
-        return nil, "Failed to create shape (no known API variant worked): " .. tostring(lastErr)
+        return nil, "Failed to create shape: " .. tostring(createErr)
     end
 
     local afterShapes = beforeShapes
