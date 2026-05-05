@@ -458,32 +458,22 @@ export function registerTools(server: McpServer, client: MohoClient): void {
   // 17. layer.setTransform — Move/rotate/scale a layer at a frame
   server.tool(
     "layer_setTransform",
-    "Set the transform (translation, rotation, scale) of a layer at a specific frame. All transform params are optional — only supplied values are changed.",
+    "Set the transform (translation, rotation, scale) of a layer at a specific frame. All transform params are optional — only supplied values are changed. Translation and scale are 3D channels (AnimVec3); transZ/scaleZ default to the existing z value when omitted.",
     {
       layerId: z.number().describe("The numeric ID of the layer"),
       frame: z.number().describe("The frame number to set the keyframe at"),
-      transX: z
-        .number()
-        .optional()
-        .describe("Layer X translation"),
-      transY: z
-        .number()
-        .optional()
-        .describe("Layer Y translation"),
+      transX: z.number().optional().describe("Layer X translation"),
+      transY: z.number().optional().describe("Layer Y translation"),
+      transZ: z.number().optional().describe("Layer Z translation"),
       rotation: z
         .number()
         .optional()
-        .describe("Layer rotation in radians"),
-      scaleX: z
-        .number()
-        .optional()
-        .describe("Layer X scale"),
-      scaleY: z
-        .number()
-        .optional()
-        .describe("Layer Y scale"),
+        .describe("Layer rotation in radians (Z axis)"),
+      scaleX: z.number().optional().describe("Layer X scale"),
+      scaleY: z.number().optional().describe("Layer Y scale"),
+      scaleZ: z.number().optional().describe("Layer Z scale"),
     },
-    async ({ layerId, frame, transX, transY, rotation, scaleX, scaleY }) => {
+    async ({ layerId, frame, transX, transY, transZ, rotation, scaleX, scaleY, scaleZ }) => {
       try {
         await ensureConnected(client);
         const result = await client.sendRequest("layer.setTransform", {
@@ -491,9 +481,11 @@ export function registerTools(server: McpServer, client: MohoClient): void {
           frame,
           transX,
           transY,
+          transZ,
           rotation,
           scaleX,
           scaleY,
+          scaleZ,
         });
         return successContent(result);
       } catch (err) {

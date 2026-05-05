@@ -38,6 +38,22 @@ local function vec2table(v)
     return { x = 0, y = 0 }
 end
 
+--- Convert an LM.Vector3 (userdata) to a plain table with numeric values.
+-- fTranslation and fScale on MohoLayer are AnimVec3 channels per the docs,
+-- so their GetValue() results carry an extra z component we want to preserve.
+local function vec3table(v)
+    if v == nil then
+        return { x = 0, y = 0, z = 0 }
+    end
+    local ok, x, y, z = pcall(function()
+        return tonumber(v.x) or 0, tonumber(v.y) or 0, tonumber(v.z) or 0
+    end)
+    if ok then
+        return { x = x, y = y, z = z }
+    end
+    return { x = 0, y = 0, z = 0 }
+end
+
 --- Force a value to a plain Lua number (handles MOHO userdata wrappers).
 local function toPlainNumber(val, default)
     if val == nil then return default or 0 end
@@ -55,19 +71,23 @@ end
 local CHANNEL_MAP = {
     translation = {
         getter = function(lyr) return lyr.fTranslation end,
-        valueConverter = function(val) return vec2table(val) end,
+        valueConverter = function(val) return vec3table(val) end,
+        kind = "vec3",
     },
     position = {
         getter = function(lyr) return lyr.fTranslation end,
-        valueConverter = function(val) return vec2table(val) end,
+        valueConverter = function(val) return vec3table(val) end,
+        kind = "vec3",
     },
     rotation = {
         getter = function(lyr) return lyr.fRotationZ end,
         valueConverter = function(val) return toPlainNumber(val, 0) end,
+        kind = "scalar",
     },
     scale = {
         getter = function(lyr) return lyr.fScale end,
-        valueConverter = function(val) return vec2table(val) end,
+        valueConverter = function(val) return vec3table(val) end,
+        kind = "vec3",
     },
     opacity = {
         getter = function(lyr) return lyr.fAlpha end,
@@ -235,14 +255,14 @@ function animation.getFrameState(moho, params)
         frame   = frame,
     }
 
-    -- Translation via fTranslation (AnimVec2)
+    -- Translation via fTranslation (AnimVec3)
     local tOk, tVal = pcall(function()
         return lyr.fTranslation:GetValue(frame)
     end)
     if tOk and tVal then
-        result.translation = vec2table(tVal)
+        result.translation = vec3table(tVal)
     else
-        result.translation = { x = 0, y = 0 }
+        result.translation = { x = 0, y = 0, z = 0 }
     end
 
     -- Rotation via fRotationZ (AnimVal)
@@ -251,14 +271,14 @@ function animation.getFrameState(moho, params)
     end)
     result.rotation = rOk and toPlainNumber(rVal, 0) or 0
 
-    -- Scale via fScale (AnimVec2)
+    -- Scale via fScale (AnimVec3)
     local sOk, sVal = pcall(function()
         return lyr.fScale:GetValue(frame)
     end)
     if sOk and sVal then
-        result.scale = vec2table(sVal)
+        result.scale = vec3table(sVal)
     else
-        result.scale = { x = 1, y = 1 }
+        result.scale = { x = 1, y = 1, z = 1 }
     end
 
     -- Opacity via fAlpha (AnimVal)
@@ -329,15 +349,18 @@ function animation.setKeyframe(moho, params)
     local value = params.value
 
     local ok, setErr = pcall(function()
-        -- For vec2 channels (translation, scale), value should be {x, y}
-        if channelName == "translation" or channelName == "position" or channelName == "scale" then
-            local vec = LM.Vector2:new_local()
+        if mapping.kind == "vec3" then
+            -- AnimVec3 channels (translation, scale) — preserve z when not supplied.
+            local cur = channel:GetValue(frame)
+            local vec = LM.Vector3:new_local()
             if type(value) == "table" then
-                vec.x = value.x or value[1] or 0
-                vec.y = value.y or value[2] or 0
+                vec.x = value.x or value[1] or (cur and cur.x) or 0
+                vec.y = value.y or value[2] or (cur and cur.y) or 0
+                vec.z = value.z or value[3] or (cur and cur.z) or 0
             else
                 vec.x = value
                 vec.y = value
+                vec.z = (cur and cur.z) or 0
             end
             channel:SetValue(frame, vec)
         else

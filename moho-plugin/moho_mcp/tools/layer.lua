@@ -75,19 +75,21 @@ end
 
 --- Read the static transform properties of a layer.
 -- Wraps each accessor in pcall so a missing channel does not abort everything.
+-- Note: fTranslation and fScale are AnimVec3 channels per the MohoLayer docs,
+-- so we read x/y/z and report all three.
 local function readTransform(lyr, frame)
     local transform = {}
     frame = frame or 0
 
-    -- Translation via fTranslation (AnimVec2)
-    local tOk, tx, ty = pcall(function()
+    -- Translation via fTranslation (AnimVec3)
+    local tOk, tx, ty, tz = pcall(function()
         local val = lyr.fTranslation:GetValue(frame)
-        return val.x, val.y
+        return val.x, val.y, val.z
     end)
     if tOk then
-        transform.translation = { x = tx, y = ty }
+        transform.translation = { x = tx, y = ty, z = tz or 0 }
     else
-        transform.translation = { x = 0, y = 0 }
+        transform.translation = { x = 0, y = 0, z = 0 }
     end
 
     -- Rotation via fRotationZ (AnimVal, radians)
@@ -96,15 +98,15 @@ local function readTransform(lyr, frame)
     end)
     transform.rotation = rOk and rVal or 0
 
-    -- Scale via fScale (AnimVec2)
-    local sOk, sx, sy = pcall(function()
+    -- Scale via fScale (AnimVec3)
+    local sOk, sx, sy, sz = pcall(function()
         local val = lyr.fScale:GetValue(frame)
-        return val.x, val.y
+        return val.x, val.y, val.z
     end)
     if sOk then
-        transform.scale = { x = sx, y = sy }
+        transform.scale = { x = sx, y = sy, z = sz or 1 }
     else
-        transform.scale = { x = 1, y = 1 }
+        transform.scale = { x = 1, y = 1, z = 1 }
     end
 
     return transform
@@ -283,8 +285,11 @@ end
 
 --- Set the transform of a layer at a specific frame.
 -- All transform parameters are optional; only supplied values are applied.
+-- Note: fTranslation and fScale are AnimVec3 channels per the MohoLayer docs,
+-- so we use LM.Vector3 (not Vector2) and preserve the existing z component.
 -- @param moho  The global ScriptInterface object
--- @param params table  Must contain layerId, frame; optionally transX, transY, rotation, scaleX, scaleY
+-- @param params table  Must contain layerId, frame.
+--   Optional: transX, transY, transZ, rotation, scaleX, scaleY, scaleZ
 -- @return table|nil  Confirmation on success
 -- @return string|nil  An error message on failure
 function layer.setTransform(moho, params)
@@ -305,20 +310,20 @@ function layer.setTransform(moho, params)
 
     local changed = {}
 
-    -- Translation
-    if params.transX ~= nil or params.transY ~= nil then
+    -- Translation (AnimVec3 — preserve z when only x/y are supplied)
+    if params.transX ~= nil or params.transY ~= nil or params.transZ ~= nil then
         local ok, setErr = pcall(function()
             local cur = lyr.fTranslation:GetValue(frame)
-            local newX = params.transX or cur.x
-            local newY = params.transY or cur.y
-            local vec = LM.Vector2:new_local()
-            vec.x = newX
-            vec.y = newY
+            local vec = LM.Vector3:new_local()
+            vec.x = params.transX or cur.x
+            vec.y = params.transY or cur.y
+            vec.z = params.transZ or cur.z
             lyr.fTranslation:SetValue(frame, vec)
         end)
         if ok then
             changed.transX = params.transX
             changed.transY = params.transY
+            changed.transZ = params.transZ
         else
             return nil, "Failed to set translation: " .. tostring(setErr)
         end
@@ -336,20 +341,20 @@ function layer.setTransform(moho, params)
         end
     end
 
-    -- Scale
-    if params.scaleX ~= nil or params.scaleY ~= nil then
+    -- Scale (AnimVec3 — preserve z when only x/y are supplied)
+    if params.scaleX ~= nil or params.scaleY ~= nil or params.scaleZ ~= nil then
         local ok, setErr = pcall(function()
             local cur = lyr.fScale:GetValue(frame)
-            local newX = params.scaleX or cur.x
-            local newY = params.scaleY or cur.y
-            local vec = LM.Vector2:new_local()
-            vec.x = newX
-            vec.y = newY
+            local vec = LM.Vector3:new_local()
+            vec.x = params.scaleX or cur.x
+            vec.y = params.scaleY or cur.y
+            vec.z = params.scaleZ or cur.z
             lyr.fScale:SetValue(frame, vec)
         end)
         if ok then
             changed.scaleX = params.scaleX
             changed.scaleY = params.scaleY
+            changed.scaleZ = params.scaleZ
         else
             return nil, "Failed to set scale: " .. tostring(setErr)
         end
