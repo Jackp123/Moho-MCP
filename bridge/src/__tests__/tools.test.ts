@@ -62,9 +62,9 @@ describe("registerTools", () => {
     ).not.toThrow();
   });
 
-  it("registers exactly 34 tools", () => {
+  it("registers exactly 44 tools", () => {
     registerTools(mockServer as unknown as Parameters<typeof registerTools>[0], client);
-    expect(mockServer.tools).toHaveLength(34);
+    expect(mockServer.tools).toHaveLength(44);
   });
 
   it("registers all expected tool names", () => {
@@ -112,6 +112,18 @@ describe("registerTools", () => {
     expect(names).toContain("mesh_addPoint");
     expect(names).toContain("mesh_createShape");
     expect(names).toContain("document_save");
+
+    // Curves, binding, smart bones, reparenting
+    expect(names).toContain("mesh_setPointCurvature");
+    expect(names).toContain("mesh_getCurves");
+    expect(names).toContain("mesh_setBezierHandle");
+    expect(names).toContain("mesh_bindPoints");
+    expect(names).toContain("layer_setParentBone");
+    expect(names).toContain("layer_placeInGroup");
+    expect(names).toContain("layer_placeBehind");
+    expect(names).toContain("layer_activateAction");
+    expect(names).toContain("layer_listActions");
+    expect(names).toContain("bone_createSmartAction");
   });
 
   it("each tool has a non-empty description", () => {

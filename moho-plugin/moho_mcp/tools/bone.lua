@@ -514,4 +514,65 @@ function bone.selectBone(moho, params)
     }
 end
 
+--- Create a smart-bone action on a bone layer for the given bone.
+-- Smart bone actions are named the same as the bone they drive — when the bone
+-- is rotated, the action plays back proportionally. After creating it, call
+-- layer.activateAction with the same name and any subsequent bone keyframes
+-- get recorded into the dial.
+-- @param params  layerId, boneId. Optional: frame (default 0).
+function bone.createSmartAction(moho, params)
+    if not params or params.layerId == nil or params.boneId == nil then
+        return nil, "Missing required parameter: layerId and boneId"
+    end
+
+    local b, skel, err = getBone(moho, params.layerId, params.boneId)
+    if not b then
+        return nil, err
+    end
+
+    local lyr = getLayerById(moho, params.layerId)
+    moho.document:PrepUndo(lyr)
+
+    local nameOk, boneName = pcall(function() return b:Name() end)
+    if not nameOk or not boneName or boneName == "" then
+        return nil, "Bone has no name; smart bone actions need a named bone"
+    end
+
+    -- Skip if it already exists.
+    local already = false
+    pcall(function() already = lyr:HasAction(boneName) end)
+    if already then
+        return {
+            success    = true,
+            layerId    = params.layerId,
+            boneId     = params.boneId,
+            actionName = boneName,
+            created    = false,
+        }
+    end
+
+    local frame = params.frame or 0
+    local ok, insertErr = pcall(function()
+        -- MohoLayer:InsertAction(name, frame, byReference)
+        lyr:InsertAction(boneName, frame, false)
+    end)
+    if not ok then
+        return nil, "Failed to insert action: " .. tostring(insertErr)
+    end
+
+    moho.document:SetDirty()
+
+    local isSmart = false
+    pcall(function() isSmart = lyr:IsSmartBoneAction(boneName) end)
+
+    return {
+        success     = true,
+        layerId     = params.layerId,
+        boneId      = params.boneId,
+        actionName  = boneName,
+        created     = true,
+        isSmartBone = isSmart,
+    }
+end
+
 return bone

@@ -42,6 +42,17 @@ local allowedMethods = {
     ["mesh.addPoint"]                 = true,
     ["mesh.createShape"]              = true,
     ["document.save"]                 = true,
+    -- Phase 5: Curves, binding, smart bones, reparenting
+    ["mesh.setPointCurvature"]        = true,
+    ["mesh.getCurves"]                = true,
+    ["mesh.setBezierHandle"]          = true,
+    ["mesh.bindPoints"]               = true,
+    ["layer.setParentBone"]           = true,
+    ["layer.placeInGroup"]            = true,
+    ["layer.placeBehind"]             = true,
+    ["layer.activateAction"]          = true,
+    ["layer.listActions"]             = true,
+    ["bone.createSmartAction"]        = true,
 }
 
 -- Parameter schemas for each method.
@@ -159,6 +170,49 @@ local paramSchemas = {
         { name = "pointIndices", type = "table"  },
     },
     ["document.save"]          = {},
+    -- Phase 5: Curves, binding, smart bones, reparenting
+    ["mesh.setPointCurvature"] = {
+        { name = "layerId",    type = "number" },
+        { name = "pointIndex", type = "number" },
+        { name = "curvature",  type = "number" },
+    },
+    ["mesh.getCurves"]         = {
+        { name = "layerId", type = "number" },
+    },
+    ["mesh.setBezierHandle"]   = {
+        { name = "layerId",         type = "number" },
+        { name = "curveIndex",      type = "number" },
+        { name = "curvePointIndex", type = "number" },
+        { name = "x",               type = "number" },
+        { name = "y",               type = "number" },
+    },
+    ["mesh.bindPoints"]        = {
+        { name = "layerId",      type = "number" },
+        { name = "pointIndices", type = "table"  },
+        { name = "boneId",       type = "number" },
+    },
+    ["layer.setParentBone"]    = {
+        { name = "layerId", type = "number" },
+        { name = "boneId",  type = "number" },
+    },
+    ["layer.placeInGroup"]     = {
+        { name = "layerId",       type = "number" },
+        { name = "parentGroupId", type = "number" },
+    },
+    ["layer.placeBehind"]      = {
+        { name = "layerId",       type = "number" },
+        { name = "behindLayerId", type = "number" },
+    },
+    ["layer.activateAction"]   = {
+        { name = "layerId", type = "number" },
+    },
+    ["layer.listActions"]      = {
+        { name = "layerId", type = "number" },
+    },
+    ["bone.createSmartAction"] = {
+        { name = "layerId", type = "number" },
+        { name = "boneId",  type = "number" },
+    },
 }
 
 --- Check whether a method name is in the allow-list.

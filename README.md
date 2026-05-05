@@ -29,14 +29,15 @@ An MCP (Model Context Protocol) server for **Moho Pro 14** — enabling AI assis
 
 | Capability | Description |
 |------------|-------------|
-| **Read** | Query document structure, layers, bones, animation keyframes, mesh data |
+| **Read** | Query document structure, layers, bones, animation keyframes, mesh data, curves, actions |
 | **Write** | Set bone/layer transforms, create/delete keyframes, change interpolation, rename layers |
-| **Create** | Create new layers, bones, mesh points, and shapes; save the document |
+| **Create** | Create new layers, bones, mesh points, shapes, smart-bone dials; save the document |
+| **Rig** | Curvature & bezier handles for smooth shapes, mesh-point/layer bone binding, smart-bone actions, reparent/reorder layers |
 | **See** | Capture rendered scene frames or full MOHO UI screenshots |
 | **Interact** | Send mouse clicks, drags, and keyboard shortcuts to the MOHO window |
 | **Know** | Built-in reference data for all Moho 14 tools and keyboard shortcuts |
 
-## Available Tools (34)
+## Available Tools (44)
 
 ### Read-Only Tools
 
@@ -83,6 +84,21 @@ An MCP (Model Context Protocol) server for **Moho Pro 14** — enabling AI assis
 | `document_save` | Save the document; pass `filePath` for Save As |
 
 > **Tip:** Combine these with `batch_execute` to build whole rigs or scenes in a single round-trip — e.g. add a vector layer, add 4 mesh points, then create the shape, all in one call.
+
+### Rigging Tools
+
+| Tool | Description |
+|------|-------------|
+| `mesh_setPointCurvature` | Smooth or sharpen a single vertex (positive curvature = smooth, 0 = corner) — essential for hand-drawn-looking shapes |
+| `mesh_getCurves` | List a vector layer's curves with mesh-global → curve-local point index mapping |
+| `mesh_setBezierHandle` | Direct control of a bezier handle on a curve point |
+| `mesh_bindPoints` | Bind mesh points to a bone (or unbind / flexi-bind) so the bone deforms the art |
+| `layer_setParentBone` | Set a layer's controlling parent bone (e.g. parent a hand layer to a wrist bone) |
+| `layer_placeInGroup` | Reparent a layer into a group |
+| `layer_placeBehind` | Reorder layers within a group |
+| `layer_activateAction` | Switch into action-edit mode (or back to mainline) — keyframes recorded while active become the action's content |
+| `layer_listActions` | List all actions on a layer, marking which are smart-bone dials |
+| `bone_createSmartAction` | Create a smart-bone action named after a bone — call `layer_activateAction` next to start recording the dial |
 
 ### Visual & Input Tools
 
