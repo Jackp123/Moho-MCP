@@ -33,11 +33,14 @@ An MCP (Model Context Protocol) server for **Moho Pro 14** — enabling AI assis
 | **Write** | Set bone/layer transforms, create/delete keyframes, change interpolation, rename layers |
 | **Create** | Create new layers, bones, mesh points, shapes, smart-bone dials; save the document |
 | **Rig** | Curvature & bezier handles for smooth shapes, mesh-point/layer bone binding, smart-bone actions, reparent/reorder layers |
+| **Cinematics** | Animate the camera (track, pan/tilt, roll, zoom) and layer effects (blur, drop shadow, outline) |
+| **Particles** | Configure particle-layer emitters: count, lifetime, velocity, direction, acceleration |
+| **History** | Undo / redo |
 | **See** | Capture rendered scene frames or full MOHO UI screenshots |
 | **Interact** | Send mouse clicks, drags, and keyboard shortcuts to the MOHO window |
 | **Know** | Built-in reference data for all Moho 14 tools and keyboard shortcuts |
 
-## Available Tools (44)
+## Available Tools (51)
 
 ### Read-Only Tools
 
@@ -99,6 +102,28 @@ An MCP (Model Context Protocol) server for **Moho Pro 14** — enabling AI assis
 | `layer_activateAction` | Switch into action-edit mode (or back to mainline) — keyframes recorded while active become the action's content |
 | `layer_listActions` | List all actions on a layer, marking which are smart-bone dials |
 | `bone_createSmartAction` | Create a smart-bone action named after a bone — call `layer_activateAction` next to start recording the dial |
+
+### Camera & Effects
+
+| Tool | Description |
+|------|-------------|
+| `document_setCamera` | Animate the camera at a frame: 3D track position, pan/tilt/roll (radians), zoom |
+| `layer_setBlur` | Animate a layer's blur amount |
+| `layer_setShadow` | Animate a drop shadow (offset, blur, angle, color, on/off) |
+| `layer_setOutline` | Animate the layer outline (width, color, on/off) |
+
+### Particles
+
+| Tool | Description |
+|------|-------------|
+| `particle_setEmitter` | Configure a particle layer's emitter (count, lifetime, velocity, direction, acceleration, source dimensions, etc.); auto-finalizes |
+
+### History
+
+| Tool | Description |
+|------|-------------|
+| `document_undo` | Undo the most recent change |
+| `document_redo` | Redo the most recently undone change |
 
 ### Visual & Input Tools
 
@@ -245,7 +270,7 @@ MohoMCP/
 │       ├── config.ts          # IPC directory, timeouts
 │       ├── moho-client.ts     # File-based IPC client
 │       ├── protocol.ts        # JSON-RPC 2.0 types
-│       ├── tools.ts           # 44 MCP tool registrations
+│       ├── tools.ts           # 51 MCP tool registrations
 │       ├── resources.ts       # Static knowledge resources
 │       ├── keep-alive.ts      # Cross-platform viewport refresh
 │       ├── platform-capture.ts # Platform dispatch → window capture
@@ -270,6 +295,7 @@ MohoMCP/
 │           ├── bone.lua
 │           ├── animation.lua
 │           ├── mesh.lua
+│           ├── particle.lua
 │           └── batch.lua
 │
 ├── docs/                      # Documentation
@@ -296,7 +322,7 @@ Wrap multiple create calls in `batch_execute` so a whole rig can be built in one
 
 ## Platform Support
 
-All 44 tools work identically on both platforms. The bridge auto-detects the OS at runtime and loads the appropriate native backend — no configuration needed.
+All 51 tools work identically on both platforms. The bridge auto-detects the OS at runtime and loads the appropriate native backend — no configuration needed.
 
 | Feature | Windows | macOS |
 |---------|---------|-------|

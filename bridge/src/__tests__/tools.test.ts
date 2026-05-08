@@ -62,9 +62,9 @@ describe("registerTools", () => {
     ).not.toThrow();
   });
 
-  it("registers exactly 44 tools", () => {
+  it("registers exactly 51 tools", () => {
     registerTools(mockServer as unknown as Parameters<typeof registerTools>[0], client);
-    expect(mockServer.tools).toHaveLength(44);
+    expect(mockServer.tools).toHaveLength(51);
   });
 
   it("registers all expected tool names", () => {
@@ -124,6 +124,15 @@ describe("registerTools", () => {
     expect(names).toContain("layer_activateAction");
     expect(names).toContain("layer_listActions");
     expect(names).toContain("bone_createSmartAction");
+
+    // Camera, layer effects, particles, undo/redo
+    expect(names).toContain("document_setCamera");
+    expect(names).toContain("document_undo");
+    expect(names).toContain("document_redo");
+    expect(names).toContain("layer_setBlur");
+    expect(names).toContain("layer_setShadow");
+    expect(names).toContain("layer_setOutline");
+    expect(names).toContain("particle_setEmitter");
   });
 
   it("each tool has a non-empty description", () => {

@@ -547,6 +547,146 @@
           "isSmartBone": { "type": "boolean" }
         }
       }
+    },
+    "document.setCamera": {
+      "description": "Set document camera at a frame (track, pan/tilt, roll, zoom)",
+      "params": {
+        "type": "object",
+        "required": ["frame"],
+        "properties": {
+          "frame": { "type": "number" },
+          "posX": { "type": "number" },
+          "posY": { "type": "number" },
+          "posZ": { "type": "number" },
+          "tilt": { "type": "number" },
+          "pan": { "type": "number" },
+          "roll": { "type": "number" },
+          "zoom": { "type": "number" }
+        }
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "frame": { "type": "number" },
+          "changed": { "type": "object" }
+        }
+      }
+    },
+    "document.undo": {
+      "description": "Undo the most recent change",
+      "params": { "type": "object" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "undoable": { "type": "boolean" }
+        }
+      }
+    },
+    "document.redo": {
+      "description": "Redo the most recently undone change",
+      "params": { "type": "object" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "redoable": { "type": "boolean" }
+        }
+      }
+    },
+    "layer.setBlur": {
+      "description": "Animate a layer's blur amount at a frame",
+      "params": {
+        "type": "object",
+        "required": ["layerId", "frame", "amount"],
+        "properties": {
+          "layerId": { "type": "number" },
+          "frame": { "type": "number" },
+          "amount": { "type": "number" }
+        }
+      },
+      "result": { "type": "object", "properties": { "success": { "type": "boolean" } } }
+    },
+    "layer.setShadow": {
+      "description": "Animate a layer's drop shadow at a frame",
+      "params": {
+        "type": "object",
+        "required": ["layerId", "frame"],
+        "properties": {
+          "layerId": { "type": "number" },
+          "frame": { "type": "number" },
+          "enabled": { "type": "boolean" },
+          "offset": { "type": "number" },
+          "blur": { "type": "number" },
+          "angle": { "type": "number" },
+          "color": { "type": "string" }
+        }
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "changed": { "type": "object" }
+        }
+      }
+    },
+    "layer.setOutline": {
+      "description": "Animate a layer's outline at a frame",
+      "params": {
+        "type": "object",
+        "required": ["layerId", "frame"],
+        "properties": {
+          "layerId": { "type": "number" },
+          "frame": { "type": "number" },
+          "enabled": { "type": "boolean" },
+          "width": { "type": "number" },
+          "color": { "type": "string" }
+        }
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "changed": { "type": "object" }
+        }
+      }
+    },
+    "particle.setEmitter": {
+      "description": "Configure a particle layer's emitter and call FinalizeSettings",
+      "params": {
+        "type": "object",
+        "required": ["layerId"],
+        "properties": {
+          "layerId": { "type": "number" },
+          "numParticles": { "type": "number" },
+          "displayNumParticles": { "type": "number" },
+          "lifetime": { "type": "number" },
+          "velocity": { "type": "number" },
+          "velocitySpread": { "type": "number" },
+          "directionAngle": { "type": "number" },
+          "directionSpread": { "type": "number" },
+          "accelerationAngle": { "type": "number" },
+          "accelerationRate": { "type": "number" },
+          "damping": { "type": "number" },
+          "evenlySpaced": { "type": "boolean" },
+          "orientation": { "type": "boolean" },
+          "freeFloating": { "type": "boolean" },
+          "fullSpeedStart": { "type": "boolean" },
+          "randomStartTime": { "type": "boolean" },
+          "sourceWidth": { "type": "number" },
+          "sourceHeight": { "type": "number" },
+          "sourceDepth": { "type": "number" },
+          "randomSeed": { "type": "number" }
+        }
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "changed": { "type": "object" }
+        }
+      }
     }
   }
 }

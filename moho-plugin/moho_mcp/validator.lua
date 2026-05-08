@@ -53,6 +53,14 @@ local allowedMethods = {
     ["layer.activateAction"]          = true,
     ["layer.listActions"]             = true,
     ["bone.createSmartAction"]        = true,
+    -- Phase 6: Camera, layer effects, particles, undo/redo
+    ["document.setCamera"]            = true,
+    ["document.undo"]                 = true,
+    ["document.redo"]                 = true,
+    ["layer.setBlur"]                 = true,
+    ["layer.setShadow"]               = true,
+    ["layer.setOutline"]              = true,
+    ["particle.setEmitter"]           = true,
 }
 
 -- Parameter schemas for each method.
@@ -212,6 +220,28 @@ local paramSchemas = {
     ["bone.createSmartAction"] = {
         { name = "layerId", type = "number" },
         { name = "boneId",  type = "number" },
+    },
+    -- Phase 6: Camera, layer effects, particles, undo/redo
+    ["document.setCamera"]     = {
+        { name = "frame", type = "number" },
+    },
+    ["document.undo"]          = {},
+    ["document.redo"]          = {},
+    ["layer.setBlur"]          = {
+        { name = "layerId", type = "number" },
+        { name = "frame",   type = "number" },
+        { name = "amount",  type = "number" },
+    },
+    ["layer.setShadow"]        = {
+        { name = "layerId", type = "number" },
+        { name = "frame",   type = "number" },
+    },
+    ["layer.setOutline"]       = {
+        { name = "layerId", type = "number" },
+        { name = "frame",   type = "number" },
+    },
+    ["particle.setEmitter"]    = {
+        { name = "layerId", type = "number" },
     },
 }
 
