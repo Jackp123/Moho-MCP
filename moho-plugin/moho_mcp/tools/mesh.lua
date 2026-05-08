@@ -188,6 +188,10 @@ function mesh.getShapes(moho, params)
 
     local shapes = {}
 
+    -- Read colors at the document's current frame (AnimColor channels need a frame).
+    local frame = 0
+    pcall(function() frame = moho.frame end)
+
     for i = 0, shapeCount - 1 do
         local sOk, shape = pcall(function() return meshObj:Shape(i) end)
         if sOk and shape then
@@ -203,11 +207,25 @@ function mesh.getShapes(moho, params)
             local eOk, edgeCount = pcall(function() return shape:CountEdges() end)
             entry.edgeCount = eOk and edgeCount or 0
 
-            -- Fill color
+            -- Per the M_Shape docs: fHasFill / fHasOutline are on the shape itself,
+            -- NOT on fMyStyle. The historical name fHasLine doesn't exist anywhere.
+            local hasFillOk, hasFill = pcall(function() return shape.fHasFill end)
+            if hasFillOk and hasFill ~= nil then
+                entry.hasFill = hasFill
+            end
+
+            local hasStrokeOk, hasStroke = pcall(function() return shape.fHasOutline end)
+            if hasStrokeOk and hasStroke ~= nil then
+                entry.hasStroke = hasStroke
+            end
+
+            -- Per M_Style: fFillCol / fLineCol are AnimColor channels, so we need
+            -- :GetValue(frame) to obtain a ColorVector / rgb_color we can hex-format.
+            -- fLineWidth is a plain real on M_Style.
             local fillOk, fillColor = pcall(function()
                 local style = shape.fMyStyle
-                if style then
-                    return style.fFillCol
+                if style and style.fFillCol then
+                    return style.fFillCol:GetValue(frame)
                 end
                 return nil
             end)
@@ -215,11 +233,10 @@ function mesh.getShapes(moho, params)
                 entry.fillColor = colorToHex(fillColor)
             end
 
-            -- Stroke color
             local strokeOk, strokeColor = pcall(function()
                 local style = shape.fMyStyle
-                if style then
-                    return style.fLineCol
+                if style and style.fLineCol then
+                    return style.fLineCol:GetValue(frame)
                 end
                 return nil
             end)
@@ -227,7 +244,6 @@ function mesh.getShapes(moho, params)
                 entry.strokeColor = colorToHex(strokeColor)
             end
 
-            -- Stroke width
             local swOk, strokeWidth = pcall(function()
                 local style = shape.fMyStyle
                 if style then
@@ -237,29 +253,6 @@ function mesh.getShapes(moho, params)
             end)
             if swOk and strokeWidth then
                 entry.strokeWidth = tonumber(strokeWidth) or 0
-            end
-
-            -- Whether the shape is filled / has a stroke
-            local hasFillOk, hasFill = pcall(function()
-                local style = shape.fMyStyle
-                if style then
-                    return style.fHasFill
-                end
-                return nil
-            end)
-            if hasFillOk and hasFill ~= nil then
-                entry.hasFill = hasFill
-            end
-
-            local hasStrokeOk, hasStroke = pcall(function()
-                local style = shape.fMyStyle
-                if style then
-                    return style.fHasLine
-                end
-                return nil
-            end)
-            if hasStrokeOk and hasStroke ~= nil then
-                entry.hasStroke = hasStroke
             end
 
             shapes[#shapes + 1] = entry
