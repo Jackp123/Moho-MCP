@@ -61,6 +61,12 @@ local allowedMethods = {
     ["layer.setShadow"]               = true,
     ["layer.setOutline"]              = true,
     ["particle.setEmitter"]           = true,
+    -- Phase 7: Switch layers, image source, shape restyle
+    ["switch.setActive"]              = true,
+    ["switch.getActive"]              = true,
+    ["image.setSource"]               = true,
+    ["image.getSource"]               = true,
+    ["mesh.setShapeStyle"]            = true,
 }
 
 -- Parameter schemas for each method.
@@ -242,6 +248,25 @@ local paramSchemas = {
     },
     ["particle.setEmitter"]    = {
         { name = "layerId", type = "number" },
+    },
+    -- Phase 7: Switch layers, image source, shape restyle
+    ["switch.setActive"]       = {
+        { name = "layerId", type = "number" },
+        { name = "frame",   type = "number" },
+    },
+    ["switch.getActive"]       = {
+        { name = "layerId", type = "number" },
+    },
+    ["image.setSource"]        = {
+        { name = "layerId",  type = "number" },
+        { name = "filePath", type = "string" },
+    },
+    ["image.getSource"]        = {
+        { name = "layerId", type = "number" },
+    },
+    ["mesh.setShapeStyle"]     = {
+        { name = "layerId",    type = "number" },
+        { name = "shapeIndex", type = "number" },
     },
 }
 

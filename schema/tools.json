@@ -687,6 +687,108 @@
           "changed": { "type": "object" }
         }
       }
+    },
+    "switch.setActive": {
+      "description": "Set which child of a switch layer is visible at a frame",
+      "params": {
+        "type": "object",
+        "required": ["layerId", "frame"],
+        "properties": {
+          "layerId": { "type": "number" },
+          "frame": { "type": "number" },
+          "childName": { "type": "string" },
+          "childIndex": { "type": "number" }
+        }
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "childName": { "type": "string" }
+        }
+      }
+    },
+    "switch.getActive": {
+      "description": "Read the visible child of a switch layer at a frame",
+      "params": {
+        "type": "object",
+        "required": ["layerId"],
+        "properties": {
+          "layerId": { "type": "number" },
+          "frame": { "type": "number" }
+        }
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "childName": { "type": "string" },
+          "interpMode": { "type": "boolean" },
+          "isFrameByFrame": { "type": "boolean" },
+          "containsVisemes": { "type": "boolean" }
+        }
+      }
+    },
+    "image.setSource": {
+      "description": "Set the source image file on an image layer",
+      "params": {
+        "type": "object",
+        "required": ["layerId", "filePath"],
+        "properties": {
+          "layerId": { "type": "number" },
+          "filePath": { "type": "string" }
+        }
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "filePath": { "type": "string" }
+        }
+      }
+    },
+    "image.getSource": {
+      "description": "Read the source image path of an image layer plus metadata",
+      "params": {
+        "type": "object",
+        "required": ["layerId"],
+        "properties": { "layerId": { "type": "number" } }
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "filePath": { "type": "string" },
+          "pixelWidth": { "type": "number" },
+          "pixelHeight": { "type": "number" },
+          "isMovie": { "type": "boolean" },
+          "isImageSequence": { "type": "boolean" },
+          "isPSD": { "type": "boolean" }
+        }
+      }
+    },
+    "mesh.setShapeStyle": {
+      "description": "Update an existing shape's style (fill / stroke / width / hasFill / hasOutline / name)",
+      "params": {
+        "type": "object",
+        "required": ["layerId", "shapeIndex"],
+        "properties": {
+          "layerId": { "type": "number" },
+          "shapeIndex": { "type": "number" },
+          "frame": { "type": "number" },
+          "name": { "type": "string" },
+          "fillColor": { "type": "string" },
+          "strokeColor": { "type": "string" },
+          "strokeWidth": { "type": "number" },
+          "hasFill": { "type": "boolean" },
+          "hasOutline": { "type": "boolean" }
+        }
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "changed": { "type": "object" }
+        }
+      }
     }
   }
 }

@@ -772,6 +772,8 @@ end
 -- Per the MohoLayer docs: ActivateAction(name). Pass an empty string to return
 -- to the mainline timeline. Any keyframes set while an action is active are
 -- stored in that action — this is how smart bone dials are recorded.
+-- Idempotent: if the requested action is already current, ActivateAction is
+-- skipped to avoid any chance of MOHO re-entering edit mode unpredictably.
 function layer.activateAction(moho, params)
     if not params or params.layerId == nil then
         return nil, "Missing required parameter: layerId"
@@ -786,6 +788,19 @@ function layer.activateAction(moho, params)
     end
 
     local actionName = params.actionName or ""
+
+    -- Read current action up front for idempotency.
+    local before = ""
+    pcall(function() before = lyr:CurrentAction() end)
+    if before == actionName then
+        return {
+            success       = true,
+            layerId       = params.layerId,
+            currentAction = before,
+            alreadyActive = true,
+        }
+    end
+
     local ok, setErr = pcall(function() lyr:ActivateAction(actionName) end)
     if not ok then
         return nil, "Failed to activate action: " .. tostring(setErr)
@@ -795,9 +810,11 @@ function layer.activateAction(moho, params)
     pcall(function() current = lyr:CurrentAction() end)
 
     return {
-        success       = true,
-        layerId       = params.layerId,
-        currentAction = current,
+        success         = true,
+        layerId         = params.layerId,
+        currentAction   = current,
+        previousAction  = before,
+        alreadyActive   = false,
     }
 end
 

@@ -1548,4 +1548,137 @@ export function registerTools(server: McpServer, client: MohoClient): void {
       }
     },
   );
+
+  // =========================================================================
+  // Phase 7: Switch layers, image source, shape restyle
+  // =========================================================================
+
+  // 52. switch.setActive — Set the visible child of a switch layer at a frame
+  server.tool(
+    "switch_setActive",
+    "Set which child of a switch layer is visible at a given frame. Pass either childName (string, exact name of a child layer) or childIndex (0-based). Switch layers are how you do mouth-shape lip sync, frame-by-frame mouth/eye sets, and any swap-art-per-frame workflow.",
+    {
+      layerId: z.number().describe("Absolute ID of the switch layer"),
+      frame: z.number().describe("Frame number to keyframe at"),
+      childName: z
+        .string()
+        .optional()
+        .describe("Exact name of the child layer to make visible"),
+      childIndex: z
+        .number()
+        .optional()
+        .describe("0-based index of the child layer (resolved to its name)"),
+    },
+    async (params) => {
+      try {
+        await ensureConnected(client);
+        const result = await client.sendRequest("switch.setActive", params);
+        return successContent(result);
+      } catch (err) {
+        return errorContent(err);
+      }
+    },
+  );
+
+  // 53. switch.getActive — Read the visible child of a switch layer at a frame
+  server.tool(
+    "switch_getActive",
+    "Read which child of a switch layer is visible at a given frame, plus useful metadata (interpolation mode, frame-by-frame flag, lip-sync presence).",
+    {
+      layerId: z.number().describe("Absolute ID of the switch layer"),
+      frame: z
+        .number()
+        .optional()
+        .describe("Frame to query (default = current document frame)"),
+    },
+    async ({ layerId, frame }) => {
+      try {
+        await ensureConnected(client);
+        const result = await client.sendRequest("switch.getActive", {
+          layerId,
+          frame,
+        });
+        return successContent(result);
+      } catch (err) {
+        return errorContent(err);
+      }
+    },
+  );
+
+  // 54. image.setSource — Set the source image file on an image layer
+  server.tool(
+    "image_setSource",
+    "Set the source image file on an image layer (PNG, JPG, PSD, image-sequence folder, or movie). Use this to place pre-drawn art into a scene after layer_createLayer creates an empty image layer.",
+    {
+      layerId: z.number().describe("Absolute ID of the image layer"),
+      filePath: z
+        .string()
+        .describe("Absolute path to the source image / movie / sequence"),
+    },
+    async ({ layerId, filePath }) => {
+      try {
+        await ensureConnected(client);
+        const result = await client.sendRequest("image.setSource", {
+          layerId,
+          filePath,
+        });
+        return successContent(result);
+      } catch (err) {
+        return errorContent(err);
+      }
+    },
+  );
+
+  // 55. image.getSource — Read the source image path of an image layer
+  server.tool(
+    "image_getSource",
+    "Read the source image path of an image layer plus pixel dimensions and movie / image-sequence / PSD flags.",
+    {
+      layerId: z.number().describe("Absolute ID of the image layer"),
+    },
+    async ({ layerId }) => {
+      try {
+        await ensureConnected(client);
+        const result = await client.sendRequest("image.getSource", { layerId });
+        return successContent(result);
+      } catch (err) {
+        return errorContent(err);
+      }
+    },
+  );
+
+  // 56. mesh.setShapeStyle — Update an existing shape's style
+  server.tool(
+    "mesh_setShapeStyle",
+    'Update an existing shape\'s style on a vector layer (post-creation). Mirrors the style fields from mesh_createShape — fillColor / strokeColor are #RRGGBB[AA] hex strings written to the AnimColor channels at the given frame, hasFill / hasOutline toggle the M_Shape booleans, and strokeWidth / name set the static M_Style and M_Shape fields. Pass any subset.',
+    {
+      layerId: z.number().describe("Absolute ID of the vector layer"),
+      shapeIndex: z.number().describe("Index of the shape to update"),
+      frame: z
+        .number()
+        .optional()
+        .describe("Frame to write the AnimColor channels at (default 0)"),
+      name: z.string().optional().describe("Rename the shape"),
+      fillColor: z.string().optional().describe("Fill color as #RRGGBB or #RRGGBBAA"),
+      strokeColor: z
+        .string()
+        .optional()
+        .describe("Stroke color as #RRGGBB or #RRGGBBAA"),
+      strokeWidth: z.number().optional().describe("Stroke width in pixels"),
+      hasFill: z.boolean().optional().describe("Toggle the shape's fill on/off"),
+      hasOutline: z
+        .boolean()
+        .optional()
+        .describe("Toggle the shape's outline on/off"),
+    },
+    async (params) => {
+      try {
+        await ensureConnected(client);
+        const result = await client.sendRequest("mesh.setShapeStyle", params);
+        return successContent(result);
+      } catch (err) {
+        return errorContent(err);
+      }
+    },
+  );
 }
