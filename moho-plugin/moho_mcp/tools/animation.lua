@@ -92,10 +92,13 @@ local CHANNEL_MAP = {
     opacity = {
         getter = function(lyr) return lyr.fAlpha end,
         valueConverter = function(val) return toPlainNumber(val, 1.0) end,
+        kind = "scalar",
     },
     shear = {
+        -- fShear on MohoLayer is an AnimVec3 channel, NOT scalar.
         getter = function(lyr) return lyr.fShear end,
-        valueConverter = function(val) return toPlainNumber(val, 0) end,
+        valueConverter = function(val) return vec3table(val) end,
+        kind = "vec3",
     },
 }
 
@@ -195,8 +198,9 @@ function animation.getKeyframes(moho, params)
             entry.value = nil
         end
 
-        -- Interpolation mode
-        local iOk, interp = pcall(function() return channel:GetKeyInterpMode(i) end)
+        -- Interpolation mode (per AnimChannel docs, GetKeyInterpMode takes a
+        -- frame; the index-based variant is GetKeyInterpModeByID).
+        local iOk, interp = pcall(function() return channel:GetKeyInterpModeByID(i) end)
         if iOk and interp ~= nil then
             entry.interpolation = interpName(interp)
         else
@@ -504,12 +508,13 @@ function animation.setInterpolation(moho, params)
 
     moho.document:PrepUndo(lyr)
 
-    -- Find the key index for this frame
+    -- Find the key index for this frame, then use SetKeyInterpByID(id, ...).
+    -- (SetKeyInterp(when, ...) takes a frame number, not an index — per AnimChannel docs.)
     local ok, setErr = pcall(function()
         local keyCount = channel:CountKeys()
         for i = 0, keyCount - 1 do
             if channel:GetKeyWhen(i) == params.frame then
-                channel:SetKeyInterp(i, interpMode, 0, 0)
+                channel:SetKeyInterpByID(i, interpMode, 0, 0)
                 return
             end
         end
