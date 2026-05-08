@@ -62,9 +62,9 @@ describe("registerTools", () => {
     ).not.toThrow();
   });
 
-  it("registers exactly 51 tools", () => {
+  it("registers exactly 56 tools", () => {
     registerTools(mockServer as unknown as Parameters<typeof registerTools>[0], client);
-    expect(mockServer.tools).toHaveLength(51);
+    expect(mockServer.tools).toHaveLength(56);
   });
 
   it("registers all expected tool names", () => {
@@ -133,6 +133,13 @@ describe("registerTools", () => {
     expect(names).toContain("layer_setShadow");
     expect(names).toContain("layer_setOutline");
     expect(names).toContain("particle_setEmitter");
+
+    // Switch layers, image source, shape restyle
+    expect(names).toContain("switch_setActive");
+    expect(names).toContain("switch_getActive");
+    expect(names).toContain("image_setSource");
+    expect(names).toContain("image_getSource");
+    expect(names).toContain("mesh_setShapeStyle");
   });
 
   it("each tool has a non-empty description", () => {

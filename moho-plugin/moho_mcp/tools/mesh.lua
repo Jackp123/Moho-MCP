@@ -680,4 +680,107 @@ function mesh.bindPoints(moho, params)
     }
 end
 
+--- Update an existing shape's style.
+-- Mirrors the style application from mesh.createShape but on a shape that
+-- already exists. Per the docs:
+--   M_Shape.fHasFill / fHasOutline   bool, on the shape itself
+--   M_Style.fFillCol / fLineCol      AnimColor channels (use :SetValue(frame, color))
+--   M_Style.fLineWidth               real, on M_Style
+-- @param params  layerId, shapeIndex. Optional: frame (default 0), name,
+--   fillColor (#RRGGBB[AA]), strokeColor, strokeWidth, hasFill (bool),
+--   hasOutline (bool).
+function mesh.setShapeStyle(moho, params)
+    if not params or params.layerId == nil then
+        return nil, "Missing required parameter: layerId"
+    end
+    if type(params.shapeIndex) ~= "number" then
+        return nil, "Missing required parameter: shapeIndex"
+    end
+
+    local meshObj, vecLyr, err = getMesh(moho, params.layerId)
+    if not meshObj then
+        return nil, err
+    end
+
+    local count = 0
+    pcall(function() count = meshObj:CountShapes() end)
+    if params.shapeIndex < 0 or params.shapeIndex >= count then
+        return nil, "shapeIndex out of range (0.." .. tostring(count - 1) .. ")"
+    end
+
+    local shape = nil
+    pcall(function() shape = meshObj:Shape(params.shapeIndex) end)
+    if not shape then
+        return nil, "Failed to access shape at index " .. tostring(params.shapeIndex)
+    end
+
+    local lyr = getLayerById(moho, params.layerId)
+    moho.document:PrepUndo(lyr)
+
+    local frame = params.frame or 0
+    local changed = {}
+
+    local function makeColor(hex)
+        hex = hex:gsub("^#", "")
+        local r = tonumber(hex:sub(1, 2), 16) or 0
+        local g = tonumber(hex:sub(3, 4), 16) or 0
+        local b = tonumber(hex:sub(5, 6), 16) or 0
+        local a = 255
+        if #hex >= 8 then a = tonumber(hex:sub(7, 8), 16) or 255 end
+        local col = LM.ColorVector:new_local()
+        col:Set(r / 255, g / 255, b / 255, a / 255)
+        return col
+    end
+
+    if params.name ~= nil and type(params.name) == "string" then
+        pcall(function() shape:SetName(params.name) end)
+        changed.name = params.name
+    end
+
+    if params.hasFill ~= nil then
+        pcall(function() shape.fHasFill = params.hasFill == true end)
+        changed.hasFill = params.hasFill == true
+    end
+    if params.hasOutline ~= nil then
+        pcall(function() shape.fHasOutline = params.hasOutline == true end)
+        changed.hasOutline = params.hasOutline == true
+    end
+
+    if params.fillColor ~= nil and type(params.fillColor) == "string" then
+        pcall(function()
+            local style = shape.fMyStyle
+            if style and style.fFillCol then
+                style.fFillCol:SetValue(frame, makeColor(params.fillColor))
+            end
+        end)
+        changed.fillColor = params.fillColor
+    end
+    if params.strokeColor ~= nil and type(params.strokeColor) == "string" then
+        pcall(function()
+            local style = shape.fMyStyle
+            if style and style.fLineCol then
+                style.fLineCol:SetValue(frame, makeColor(params.strokeColor))
+            end
+        end)
+        changed.strokeColor = params.strokeColor
+    end
+    if params.strokeWidth ~= nil and type(params.strokeWidth) == "number" then
+        pcall(function()
+            local style = shape.fMyStyle
+            if style then style.fLineWidth = params.strokeWidth end
+        end)
+        changed.strokeWidth = params.strokeWidth
+    end
+
+    moho.document:SetDirty()
+
+    return {
+        success    = true,
+        layerId    = params.layerId,
+        shapeIndex = params.shapeIndex,
+        frame      = frame,
+        changed    = changed,
+    }
+end
+
 return mesh

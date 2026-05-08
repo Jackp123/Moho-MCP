@@ -111,8 +111,10 @@ local function loadModules(baseDir)
 		{ name = "moho_mcp.tools.layer",     methods = { "layer.getProperties", "layer.getChildren", "layer.getBones", "layer.setTransform", "layer.setVisibility", "layer.setOpacity", "layer.setName", "layer.selectLayer", "layer.createLayer", "layer.deleteLayer", "layer.setParentBone", "layer.placeInGroup", "layer.placeBehind", "layer.activateAction", "layer.listActions", "layer.setBlur", "layer.setShadow", "layer.setOutline" } },
 		{ name = "moho_mcp.tools.bone",      methods = { "bone.getProperties", "bone.setTransform", "bone.selectBone", "bone.addBone", "bone.deleteBone", "bone.setRestPose", "bone.createSmartAction" } },
 		{ name = "moho_mcp.tools.animation", methods = { "animation.getKeyframes", "animation.getFrameState", "animation.setKeyframe", "animation.deleteKeyframe", "animation.setInterpolation" } },
-		{ name = "moho_mcp.tools.mesh",      methods = { "mesh.getPoints", "mesh.getShapes", "mesh.addPoint", "mesh.createShape", "mesh.setPointCurvature", "mesh.getCurves", "mesh.setBezierHandle", "mesh.bindPoints" } },
+		{ name = "moho_mcp.tools.mesh",      methods = { "mesh.getPoints", "mesh.getShapes", "mesh.addPoint", "mesh.createShape", "mesh.setPointCurvature", "mesh.getCurves", "mesh.setBezierHandle", "mesh.bindPoints", "mesh.setShapeStyle" } },
 		{ name = "moho_mcp.tools.particle",  methods = { "particle.setEmitter" } },
+		{ name = "moho_mcp.tools.switch",    methods = { "switch.setActive", "switch.getActive" } },
+		{ name = "moho_mcp.tools.image",     methods = { "image.setSource", "image.getSource" } },
 		{ name = "moho_mcp.tools.batch",     methods = { "batch.execute" } },
 	}
 

@@ -36,11 +36,14 @@ An MCP (Model Context Protocol) server for **Moho Pro 14** — enabling AI assis
 | **Cinematics** | Animate the camera (track, pan/tilt, roll, zoom) and layer effects (blur, drop shadow, outline) |
 | **Particles** | Configure particle-layer emitters: count, lifetime, velocity, direction, acceleration |
 | **History** | Undo / redo |
+| **Switch / Lip Sync** | Read and write the visible child of a switch layer per frame |
+| **Asset placement** | Set or replace the source image on an image layer |
+| **Restyle** | Update fill / stroke / width / on-off on existing shapes (animatable) |
 | **See** | Capture rendered scene frames or full MOHO UI screenshots |
 | **Interact** | Send mouse clicks, drags, and keyboard shortcuts to the MOHO window |
 | **Know** | Built-in reference data for all Moho 14 tools and keyboard shortcuts |
 
-## Available Tools (51)
+## Available Tools (56)
 
 ### Read-Only Tools
 
@@ -124,6 +127,26 @@ An MCP (Model Context Protocol) server for **Moho Pro 14** — enabling AI assis
 |------|-------------|
 | `document_undo` | Undo the most recent change |
 | `document_redo` | Redo the most recently undone change |
+
+### Switch Layers (lip sync, frame-by-frame, swap-art)
+
+| Tool | Description |
+|------|-------------|
+| `switch_setActive` | Set which child of a switch layer is visible at a frame; pass childName or childIndex |
+| `switch_getActive` | Read which child is visible plus interp/FBF/viseme metadata |
+
+### Image Layers
+
+| Tool | Description |
+|------|-------------|
+| `image_setSource` | Set the source image / movie / sequence path on an image layer |
+| `image_getSource` | Read the source path plus pixel dimensions and movie/PSD/sequence flags |
+
+### Shape Restyling
+
+| Tool | Description |
+|------|-------------|
+| `mesh_setShapeStyle` | Update an existing shape's fill / stroke colors (animatable), width, name, and hasFill / hasOutline toggles |
 
 ### Visual & Input Tools
 
@@ -270,7 +293,7 @@ MohoMCP/
 │       ├── config.ts          # IPC directory, timeouts
 │       ├── moho-client.ts     # File-based IPC client
 │       ├── protocol.ts        # JSON-RPC 2.0 types
-│       ├── tools.ts           # 51 MCP tool registrations
+│       ├── tools.ts           # 56 MCP tool registrations
 │       ├── resources.ts       # Static knowledge resources
 │       ├── keep-alive.ts      # Cross-platform viewport refresh
 │       ├── platform-capture.ts # Platform dispatch → window capture
@@ -296,6 +319,8 @@ MohoMCP/
 │           ├── animation.lua
 │           ├── mesh.lua
 │           ├── particle.lua
+│           ├── switch.lua
+│           ├── image.lua
 │           └── batch.lua
 │
 ├── docs/                      # Documentation
@@ -322,7 +347,7 @@ Wrap multiple create calls in `batch_execute` so a whole rig can be built in one
 
 ## Platform Support
 
-All 51 tools work identically on both platforms. The bridge auto-detects the OS at runtime and loads the appropriate native backend — no configuration needed.
+All 56 tools work identically on both platforms. The bridge auto-detects the OS at runtime and loads the appropriate native backend — no configuration needed.
 
 | Feature | Windows | macOS |
 |---------|---------|-------|
