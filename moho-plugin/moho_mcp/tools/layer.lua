@@ -843,4 +843,124 @@ function layer.listActions(moho, params)
     }
 end
 
+--- Helper: parse #RRGGBB or #RRGGBBAA into an LM.ColorVector.
+local function makeColorVector(hex)
+    hex = hex:gsub("^#", "")
+    local r = tonumber(hex:sub(1, 2), 16) or 0
+    local g = tonumber(hex:sub(3, 4), 16) or 0
+    local b = tonumber(hex:sub(5, 6), 16) or 0
+    local a = 255
+    if #hex >= 8 then a = tonumber(hex:sub(7, 8), 16) or 255 end
+    local col = LM.ColorVector:new_local()
+    col:Set(r / 255, g / 255, b / 255, a / 255)
+    return col
+end
+
+--- Set a layer's blur amount at a specific frame.
+-- fBlur on MohoLayer is an AnimVal channel.
+function layer.setBlur(moho, params)
+    if not params or params.layerId == nil or params.frame == nil or params.amount == nil then
+        return nil, "Missing required parameter: layerId, frame, amount"
+    end
+    local lyr, err = getLayerById(moho, params.layerId)
+    if not lyr then return nil, err end
+
+    moho.document:PrepUndo(lyr)
+    local ok, setErr = pcall(function() lyr.fBlur:SetValue(params.frame, params.amount) end)
+    if not ok then
+        return nil, "Failed to set blur: " .. tostring(setErr)
+    end
+    moho.document:SetDirty()
+
+    return {
+        success = true,
+        layerId = params.layerId,
+        frame   = params.frame,
+        amount  = params.amount,
+    }
+end
+
+--- Set a layer's drop shadow at a specific frame.
+-- fShadowOffset / fShadowBlur / fShadowAngle are AnimVal; fShadowColor is AnimColor.
+-- All component params are optional. Pass enabled=true/false to toggle the
+-- non-animated fLayerShadow channel.
+function layer.setShadow(moho, params)
+    if not params or params.layerId == nil or params.frame == nil then
+        return nil, "Missing required parameter: layerId, frame"
+    end
+    local lyr, err = getLayerById(moho, params.layerId)
+    if not lyr then return nil, err end
+
+    moho.document:PrepUndo(lyr)
+    local frame = params.frame
+    local changed = {}
+
+    if params.enabled ~= nil then
+        pcall(function() lyr.fLayerShadow:SetValue(frame, params.enabled == true) end)
+        changed.enabled = params.enabled == true
+    end
+    if params.offset ~= nil then
+        pcall(function() lyr.fShadowOffset:SetValue(frame, params.offset) end)
+        changed.offset = params.offset
+    end
+    if params.blur ~= nil then
+        pcall(function() lyr.fShadowBlur:SetValue(frame, params.blur) end)
+        changed.blur = params.blur
+    end
+    if params.angle ~= nil then
+        pcall(function() lyr.fShadowAngle:SetValue(frame, params.angle) end)
+        changed.angle = params.angle
+    end
+    if params.color ~= nil and type(params.color) == "string" then
+        pcall(function() lyr.fShadowColor:SetValue(frame, makeColorVector(params.color)) end)
+        changed.color = params.color
+    end
+
+    moho.document:SetDirty()
+
+    return {
+        success = true,
+        layerId = params.layerId,
+        frame   = frame,
+        changed = changed,
+    }
+end
+
+--- Set a layer's outline at a specific frame.
+-- fOutlineWidth is AnimVal, fOutlineColor is AnimColor; fLayerOutline is the
+-- non-animated on/off toggle.
+function layer.setOutline(moho, params)
+    if not params or params.layerId == nil or params.frame == nil then
+        return nil, "Missing required parameter: layerId, frame"
+    end
+    local lyr, err = getLayerById(moho, params.layerId)
+    if not lyr then return nil, err end
+
+    moho.document:PrepUndo(lyr)
+    local frame = params.frame
+    local changed = {}
+
+    if params.enabled ~= nil then
+        pcall(function() lyr.fLayerOutline:SetValue(frame, params.enabled == true) end)
+        changed.enabled = params.enabled == true
+    end
+    if params.width ~= nil then
+        pcall(function() lyr.fOutlineWidth:SetValue(frame, params.width) end)
+        changed.width = params.width
+    end
+    if params.color ~= nil and type(params.color) == "string" then
+        pcall(function() lyr.fOutlineColor:SetValue(frame, makeColorVector(params.color)) end)
+        changed.color = params.color
+    end
+
+    moho.document:SetDirty()
+
+    return {
+        success = true,
+        layerId = params.layerId,
+        frame   = frame,
+        changed = changed,
+    }
+end
+
 return layer

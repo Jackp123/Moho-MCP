@@ -350,4 +350,130 @@ function document.save(moho, params)
     }
 end
 
+--- Set the document's camera at a specific frame.
+-- Per the MohoDoc docs, the camera lives on the document itself:
+--   fCameraTrack    AnimVec3 (x/y/z position)
+--   fCameraPanTilt  AnimVec2 (tilt around X axis, pan around Y)
+--   fCameraRoll     AnimVal  (rotation around Z, radians)
+--   fCameraZoom     AnimVal  (BaseFoV/FoV ratio; 1.0 = default)
+-- All channel params are optional; only supplied ones are written, and the
+-- existing value is preserved on each axis we leave alone.
+-- @param params  frame. Optional: posX, posY, posZ, tilt, pan, roll, zoom.
+function document.setCamera(moho, params)
+    if not moho or not moho.document then
+        return nil, "No active document"
+    end
+    if not params or params.frame == nil then
+        return nil, "Missing required parameter: frame"
+    end
+    if type(params.frame) ~= "number" then
+        return nil, "frame must be a number"
+    end
+
+    local doc = moho.document
+    local frame = params.frame
+
+    moho.document:PrepUndo(nil)
+
+    local changed = {}
+
+    -- fCameraTrack (AnimVec3)
+    if params.posX ~= nil or params.posY ~= nil or params.posZ ~= nil then
+        local ok, err = pcall(function()
+            local cur = doc.fCameraTrack:GetValue(frame)
+            local v = LM.Vector3:new_local()
+            v.x = params.posX or cur.x
+            v.y = params.posY or cur.y
+            v.z = params.posZ or cur.z
+            doc.fCameraTrack:SetValue(frame, v)
+        end)
+        if ok then
+            changed.posX = params.posX
+            changed.posY = params.posY
+            changed.posZ = params.posZ
+        else
+            return nil, "Failed to set camera track: " .. tostring(err)
+        end
+    end
+
+    -- fCameraPanTilt (AnimVec2)
+    if params.tilt ~= nil or params.pan ~= nil then
+        local ok, err = pcall(function()
+            local cur = doc.fCameraPanTilt:GetValue(frame)
+            local v = LM.Vector2:new_local()
+            v.x = params.tilt or cur.x
+            v.y = params.pan or cur.y
+            doc.fCameraPanTilt:SetValue(frame, v)
+        end)
+        if ok then
+            changed.tilt = params.tilt
+            changed.pan = params.pan
+        else
+            return nil, "Failed to set camera pan/tilt: " .. tostring(err)
+        end
+    end
+
+    -- fCameraRoll (AnimVal, radians)
+    if params.roll ~= nil then
+        local ok, err = pcall(function() doc.fCameraRoll:SetValue(frame, params.roll) end)
+        if ok then
+            changed.roll = params.roll
+        else
+            return nil, "Failed to set camera roll: " .. tostring(err)
+        end
+    end
+
+    -- fCameraZoom (AnimVal)
+    if params.zoom ~= nil then
+        local ok, err = pcall(function() doc.fCameraZoom:SetValue(frame, params.zoom) end)
+        if ok then
+            changed.zoom = params.zoom
+        else
+            return nil, "Failed to set camera zoom: " .. tostring(err)
+        end
+    end
+
+    moho.document:SetDirty()
+
+    return {
+        success = true,
+        frame   = frame,
+        changed = changed,
+    }
+end
+
+--- Undo the last document change.
+function document.undo(moho, params)
+    if not moho or not moho.document then
+        return nil, "No active document"
+    end
+    local undoable = false
+    pcall(function() undoable = moho.document:IsUndoable() end)
+    if not undoable then
+        return { success = false, undoable = false, message = "Nothing to undo" }
+    end
+    local ok, err = pcall(function() moho.document:Undo() end)
+    if not ok then
+        return nil, "Failed to undo: " .. tostring(err)
+    end
+    return { success = true, undoable = undoable }
+end
+
+--- Redo the last undone change.
+function document.redo(moho, params)
+    if not moho or not moho.document then
+        return nil, "No active document"
+    end
+    local redoable = false
+    pcall(function() redoable = moho.document:IsRedoable() end)
+    if not redoable then
+        return { success = false, redoable = false, message = "Nothing to redo" }
+    end
+    local ok, err = pcall(function() moho.document:Redo() end)
+    if not ok then
+        return nil, "Failed to redo: " .. tostring(err)
+    end
+    return { success = true, redoable = redoable }
+end
+
 return document

@@ -1353,4 +1353,199 @@ export function registerTools(server: McpServer, client: MohoClient): void {
       }
     },
   );
+
+  // =========================================================================
+  // Phase 6: Camera, layer effects, particles, undo/redo
+  // =========================================================================
+
+  // 45. document.setCamera — Animate the camera at a frame
+  server.tool(
+    "document_setCamera",
+    "Set the document camera at a frame. The MOHO camera lives on the document with channels fCameraTrack (3D position), fCameraPanTilt (tilt+pan radians), fCameraRoll (Z rotation radians), fCameraZoom (BaseFoV/FoV; 1.0 = default). All component params are optional — only supplied axes are written, others preserve their current keyframe value.",
+    {
+      frame: z.number().describe("Frame number to keyframe at"),
+      posX: z.number().optional().describe("Camera X position"),
+      posY: z.number().optional().describe("Camera Y position"),
+      posZ: z.number().optional().describe("Camera Z position (zoom dolly)"),
+      tilt: z.number().optional().describe("Camera tilt around X axis (radians)"),
+      pan: z.number().optional().describe("Camera pan around Y axis (radians)"),
+      roll: z.number().optional().describe("Camera roll around Z axis (radians)"),
+      zoom: z
+        .number()
+        .optional()
+        .describe("Camera zoom; 1.0 = default field of view, >1 = zoomed in"),
+    },
+    async (params) => {
+      try {
+        await ensureConnected(client);
+        const result = await client.sendRequest("document.setCamera", params);
+        return successContent(result);
+      } catch (err) {
+        return errorContent(err);
+      }
+    },
+  );
+
+  // 46. document.undo — Undo last change
+  server.tool(
+    "document_undo",
+    "Undo the most recent document change. Returns success=false with a message if there is nothing to undo.",
+    {},
+    async () => {
+      try {
+        await ensureConnected(client);
+        const result = await client.sendRequest("document.undo");
+        return successContent(result);
+      } catch (err) {
+        return errorContent(err);
+      }
+    },
+  );
+
+  // 47. document.redo — Redo last undone change
+  server.tool(
+    "document_redo",
+    "Redo the most recently undone change. Returns success=false with a message if there is nothing to redo.",
+    {},
+    async () => {
+      try {
+        await ensureConnected(client);
+        const result = await client.sendRequest("document.redo");
+        return successContent(result);
+      } catch (err) {
+        return errorContent(err);
+      }
+    },
+  );
+
+  // 48. layer.setBlur — Animate a layer's blur amount
+  server.tool(
+    "layer_setBlur",
+    "Set a layer's blur amount at a frame (fBlur is an AnimVal channel on MohoLayer). Useful for depth-of-field, atmospheric perspective, or blur-then-sharpen reveals.",
+    {
+      layerId: z.number().describe("Absolute ID of the layer"),
+      frame: z.number().describe("Frame to keyframe at"),
+      amount: z.number().describe("Blur amount in pixels"),
+    },
+    async ({ layerId, frame, amount }) => {
+      try {
+        await ensureConnected(client);
+        const result = await client.sendRequest("layer.setBlur", {
+          layerId,
+          frame,
+          amount,
+        });
+        return successContent(result);
+      } catch (err) {
+        return errorContent(err);
+      }
+    },
+  );
+
+  // 49. layer.setShadow — Animate a layer's drop shadow
+  server.tool(
+    "layer_setShadow",
+    'Set a layer\'s drop-shadow effect at a frame. All components are optional — only supplied ones are written. Pass enabled=true to turn the shadow on, false to turn it off. color is "#RRGGBB" or "#RRGGBBAA".',
+    {
+      layerId: z.number().describe("Absolute ID of the layer"),
+      frame: z.number().describe("Frame to keyframe at"),
+      enabled: z.boolean().optional().describe("Toggle the shadow on/off"),
+      offset: z.number().optional().describe("Shadow offset distance in pixels"),
+      blur: z.number().optional().describe("Shadow blur radius in pixels"),
+      angle: z.number().optional().describe("Shadow direction in radians"),
+      color: z.string().optional().describe("Shadow color (#RRGGBB or #RRGGBBAA)"),
+    },
+    async (params) => {
+      try {
+        await ensureConnected(client);
+        const result = await client.sendRequest("layer.setShadow", params);
+        return successContent(result);
+      } catch (err) {
+        return errorContent(err);
+      }
+    },
+  );
+
+  // 50. layer.setOutline — Animate a layer's outline
+  server.tool(
+    "layer_setOutline",
+    'Set a layer\'s outline at a frame. Pass enabled to toggle the outline; width / color animate. color is "#RRGGBB" or "#RRGGBBAA".',
+    {
+      layerId: z.number().describe("Absolute ID of the layer"),
+      frame: z.number().describe("Frame to keyframe at"),
+      enabled: z.boolean().optional().describe("Toggle outline on/off"),
+      width: z.number().optional().describe("Outline width in pixels"),
+      color: z.string().optional().describe("Outline color hex"),
+    },
+    async (params) => {
+      try {
+        await ensureConnected(client);
+        const result = await client.sendRequest("layer.setOutline", params);
+        return successContent(result);
+      } catch (err) {
+        return errorContent(err);
+      }
+    },
+  );
+
+  // 51. particle.setEmitter — Configure a particle layer's emitter
+  server.tool(
+    "particle_setEmitter",
+    "Configure the emitter on a particle layer (rain, snow, sparks, smoke, etc.). All settings are optional — only supplied ones are applied. The handler calls FinalizeSettings() automatically when done.\n\nVelocity / direction are scalars + spreads. Source dimensions describe the emission region. randomSeed lets you re-roll the simulation deterministically.",
+    {
+      layerId: z.number().describe("Absolute ID of the particle layer"),
+      numParticles: z.number().optional().describe("Total particles to simulate"),
+      displayNumParticles: z
+        .number()
+        .optional()
+        .describe("Particles to display (defaults to numParticles if omitted)"),
+      lifetime: z.number().optional().describe("Particle lifetime in frames"),
+      velocity: z.number().optional().describe("Emission velocity"),
+      velocitySpread: z.number().optional().describe("Velocity randomization spread"),
+      directionAngle: z.number().optional().describe("Emission direction in radians"),
+      directionSpread: z
+        .number()
+        .optional()
+        .describe("Direction randomization spread in radians"),
+      accelerationAngle: z
+        .number()
+        .optional()
+        .describe("Acceleration direction (radians) — e.g. -π/2 for gravity"),
+      accelerationRate: z.number().optional().describe("Acceleration magnitude"),
+      damping: z.number().optional().describe("Velocity damping factor"),
+      evenlySpaced: z
+        .boolean()
+        .optional()
+        .describe("Emit at fixed intervals instead of randomly"),
+      orientation: z
+        .boolean()
+        .optional()
+        .describe("Orient particles along their motion path"),
+      freeFloating: z.boolean().optional().describe("Free-floating particles"),
+      fullSpeedStart: z
+        .boolean()
+        .optional()
+        .describe("Start emitting at full rate from frame 0"),
+      randomStartTime: z
+        .boolean()
+        .optional()
+        .describe("Stagger emission start times"),
+      sourceWidth: z.number().optional().describe("Emitter region width"),
+      sourceHeight: z.number().optional().describe("Emitter region height"),
+      sourceDepth: z.number().optional().describe("Emitter region depth"),
+      randomSeed: z
+        .number()
+        .optional()
+        .describe("Random seed; change to re-roll the simulation"),
+    },
+    async (params) => {
+      try {
+        await ensureConnected(client);
+        const result = await client.sendRequest("particle.setEmitter", params);
+        return successContent(result);
+      } catch (err) {
+        return errorContent(err);
+      }
+    },
+  );
 }
